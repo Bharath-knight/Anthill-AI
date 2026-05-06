@@ -52,23 +52,27 @@ export default function ItemsPage() {
   const [editState, setEditState] = useState<EditState>({ company: '', role: '', location: '', deadline: '' })
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/items').then(r => r.json()),
-      fetch('/api/tasks').then(r => r.json()),
-    ]).then(([itemsData, tasksData]) => {
-      if (itemsData.error) { setError(itemsData.error); return }
-      setJobs(itemsData.jobs)
-      setResearch(itemsData.research)
-      if (Array.isArray(tasksData)) {
+    fetch('/api/items')
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { setError(data.error); return }
+        setJobs(data.jobs)
+        setResearch(data.research)
+      })
+      .catch(() => setError('Failed to load items.'))
+      .finally(() => setLoading(false))
+
+    fetch('/api/tasks')
+      .then(r => r.json())
+      .then(data => {
+        if (!Array.isArray(data)) return
         const counts: Record<string, number> = {}
-        for (const t of tasksData) {
+        for (const t of data) {
           if (t.linkedJobId) counts[t.linkedJobId] = (counts[t.linkedJobId] ?? 0) + 1
         }
         setTaskCounts(counts)
-      }
-    })
-      .catch(() => setError('Failed to load items.'))
-      .finally(() => setLoading(false))
+      })
+      .catch(() => {})
   }, [])
 
   function startEdit(job: Job) {
