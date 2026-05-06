@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Anthill",
+  "version": "1.0.0",
+  "description": "Capture jobs, research, and notes from your clipboard",
+  "permissions": ["clipboardRead", "activeTab", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Anthill — Job Capture"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
