@@ -8,10 +8,17 @@ web/out/
 # env files — never commit secrets
 web/.env.local
 web/.env
+web/.env.production
+web/.env.*.local
 
 # prisma generated client
 web/node_modules/
 
+# build artifacts
+dist/
+
 # misc
 .DS_Store
 *.log
+
+.vercel
