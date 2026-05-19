@@ -146,6 +146,7 @@ This section records deployment/debugging state so Codex and Claude share the sa
 
 ### Chrome Web Store Submission Notes
 
+- **Status: approved on Chrome Web Store** (as of 2026-05-19) using the v1.0.2 build.
 - Recommended distribution for testing: Unlisted.
 - Data usage selections should include `Website content`; `Web history` may also be appropriate because the extension sends the current tab URL when the user clicks capture.
 - Do not select clipboard data unless `clipboardRead` is reintroduced and implemented.
@@ -154,7 +155,7 @@ This section records deployment/debugging state so Codex and Claude share the sa
   - `storage`: Used to remember the Anthill API URL so the user does not need to enter it every time.
   - Host permission: Used to send the captured job posting URL to the Anthill web app API at `https://anthill-ai.vercel.app`.
 - Remote code answer: No. The extension does not load or execute remote JavaScript; it only sends HTTPS API requests to the Anthill backend.
-- Chrome dashboard requires a publisher contact email to be added and verified in Settings before publishing.
+- Publisher contact email was added and verified in the Chrome dashboard prior to approval.
 
 ### Security Cleanup Reminder
 
