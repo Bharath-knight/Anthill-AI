@@ -95,3 +95,70 @@ Example:
 - No advanced caching
 - No analytics
 - No complex permission systems
+
+## Operational Handoff - 2026-05-07
+
+This section records deployment/debugging state so Codex and Claude share the same memory. Do not add secrets or raw tokens here.
+
+### Production Deployment
+
+- Vercel project: `anthill-ai`
+- Vercel team/scope: `bharath-knights-projects`
+- Production URL: `https://anthill-ai.vercel.app`
+- Vercel project root directory is configured as `web/`.
+- When deploying with the Vercel CLI from this repository, run from the repo root, not from `web/`; running from `web/` causes Vercel to look for `web/web`.
+- Latest verified deploy added `/privacy` and was aliased to production successfully.
+- Verified production endpoints after deploy:
+  - `https://anthill-ai.vercel.app/privacy` returns `200`
+  - `https://anthill-ai.vercel.app/api/items` returns `200`
+  - `https://anthill-ai.vercel.app/api/tasks` returns `200`
+
+### Supabase / Prisma Notes
+
+- Supabase project ref: `xmfbqqgbahsbofimrfay`
+- Supabase region: `us-west-2`
+- Vercel must use Supabase Supavisor/pooler host, not the IPv6-only direct host.
+- Pooler host: `aws-1-us-west-2.pooler.supabase.com`
+- Pooler username format: `postgres.xmfbqqgbahsbofimrfay`
+- `DATABASE_URL` should use transaction pooling on port `6543` and include `?pgbouncer=true&connection_limit=1`.
+- `DIRECT_URL` should use the pooler/session connection on port `5432` for Vercel-hosted Prisma workflows.
+- Do not use `db.xmfbqqgbahsbofimrfay.supabase.co` from Vercel. Earlier production logs showed `PrismaClientInitializationError` when Vercel tried to reach that host.
+- Required Vercel env keys:
+  - `DATABASE_URL`
+  - `DIRECT_URL`
+  - `JWT_SECRET`
+  - `GROQ_API_KEY`
+  - `DEV_USER_ID`
+- Current MVP still relies on `DEV_USER_ID=dev-user-1` for legacy capture/items/tasks routes.
+
+### Chrome Extension Status
+
+- Extension is plain Manifest V3 in `extension/`; no build step.
+- Store/test package currently built at `dist/anthill-extension-v1.0.2.zip`.
+- Manifest version `1.0.2` removed the unused `clipboardRead` permission.
+- Store build permissions are:
+  - `activeTab`
+  - `storage`
+  - host permission for `https://anthill-ai.vercel.app/*`
+- Default API URL in `extension/popup.js` is `https://anthill-ai.vercel.app`.
+- The popup normalizes any entered API URL to its origin, so `https://anthill-ai.vercel.app/items` becomes `https://anthill-ai.vercel.app`.
+- Chrome Web Store privacy policy URL should be `https://anthill-ai.vercel.app/privacy`.
+
+### Chrome Web Store Submission Notes
+
+- Recommended distribution for testing: Unlisted.
+- Data usage selections should include `Website content`; `Web history` may also be appropriate because the extension sends the current tab URL when the user clicks capture.
+- Do not select clipboard data unless `clipboardRead` is reintroduced and implemented.
+- Permission justifications used:
+  - `activeTab`: Used only when the user clicks "Capture This Job" to access the current active tab URL and send that URL to the Anthill API.
+  - `storage`: Used to remember the Anthill API URL so the user does not need to enter it every time.
+  - Host permission: Used to send the captured job posting URL to the Anthill web app API at `https://anthill-ai.vercel.app`.
+- Remote code answer: No. The extension does not load or execute remote JavaScript; it only sends HTTPS API requests to the Anthill backend.
+- Chrome dashboard requires a publisher contact email to be added and verified in Settings before publishing.
+
+### Security Cleanup Reminder
+
+- Supabase/Vercel/Groq tokens and credentials were discussed during debugging. Treat any pasted token as compromised after the session.
+- Revoke short-lived Supabase PATs after use.
+- Rotate Groq keys and database password if they were pasted into chat or transcripts.
+- Never commit `.env`, `.env.local`, `.env.production`, Vercel tokens, Supabase PATs, or API keys.
