@@ -1,70 +1,53 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Briefcase, Search, X } from 'lucide-react'
+import { AppShell } from '@/components/AppShell'
+import { JobCard, type Job } from '@/components/JobCard'
+import { ResearchCard, type ResearchItem } from '@/components/ResearchCard'
+import { EmptyState } from '@/components/EmptyState'
+import { TextInput, FieldLabel } from '@/components/Input'
+import { Button } from '@/components/Button'
+import { PasteCapture, type Captured } from '@/components/PasteCapture'
+import { useToast } from '@/components/Toast'
+import { authedFetch, getToken } from '@/lib/api-client'
 
-type JobEvent = {
-  id: string
-  type: string
-  fromStatus: string | null
-  toStatus: string | null
-  createdAt: string
-}
-
-type Job = {
-  id: string
-  company: string
-  role: string
-  location: string | null
-  deadline: string
-  link: string
-  notes: string | null
-  status: string
-  createdAt: string
-  events: JobEvent[]
-}
-
-type ResearchItem = {
-  id: string
-  content: string
-  sourceUrl: string | null
-  domain: string | null
-  createdAt: string
-}
-
-type EditState = { company: string; role: string; location: string; deadline: string }
-
-const STATUS_OPTIONS = ['SAVED', 'APPLIED', 'INTERVIEW', 'OFFER', 'REJECTED']
-
-function timeAgo(iso: string): string {
-  const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
-  if (secs < 60) return 'just now'
-  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`
-  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`
-  return `${Math.floor(secs / 86400)}d ago`
-}
+type EditState = { id: string; company: string; role: string; location: string; deadline: string }
 
 export default function ItemsPage() {
+  const router = useRouter()
+  const toast = useToast()
   const [jobs, setJobs] = useState<Job[]>([])
   const [research, setResearch] = useState<ResearchItem[]>([])
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editState, setEditState] = useState<EditState>({ company: '', role: '', location: '', deadline: '' })
+  const [edit, setEdit] = useState<EditState | null>(null)
+  const [authed, setAuthed] = useState(false)
 
   useEffect(() => {
-    fetch('/api/items')
-      .then(r => r.json())
-      .then(data => {
-        if (data.error) { setError(data.error); return }
+    if (!getToken()) {
+      router.replace('/login')
+      return
+    }
+    setAuthed(true)
+
+    authedFetch('/api/items')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) {
+          setError(data.error)
+          return
+        }
         setJobs(data.jobs)
         setResearch(data.research)
       })
       .catch(() => setError('Failed to load items.'))
       .finally(() => setLoading(false))
 
-    fetch('/api/tasks')
-      .then(r => r.json())
-      .then(data => {
+    authedFetch('/api/tasks')
+      .then((r) => r.json())
+      .then((data) => {
         if (!Array.isArray(data)) return
         const counts: Record<string, number> = {}
         for (const t of data) {
@@ -73,210 +56,205 @@ export default function ItemsPage() {
         setTaskCounts(counts)
       })
       .catch(() => {})
-  }, [])
+  }, [router])
 
-  function startEdit(job: Job) {
-    setEditingId(job.id)
-    setEditState({
-      company: job.company,
-      role: job.role,
-      location: job.location ?? '',
-      deadline: job.deadline,
-    })
-  }
-
-  async function saveEdit(id: string) {
-    const res = await fetch(`/api/jobs/${id}`, {
+  async function saveEdit() {
+    if (!edit) return
+    const res = await authedFetch(`/api/jobs/${edit.id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        company: editState.company,
-        role: editState.role,
-        location: editState.location || null,
-        deadline: editState.deadline,
+        company: edit.company,
+        role: edit.role,
+        location: edit.location || null,
+        deadline: edit.deadline,
       }),
     })
-    if (!res.ok) return
+    if (!res.ok) {
+      toast.error('Failed to save job')
+      return
+    }
     const updated = await res.json()
-    setJobs(prev => prev.map(j => j.id === id ? updated : j))
-    setEditingId(null)
+    setJobs((prev) => prev.map((j) => (j.id === edit.id ? updated : j)))
+    setEdit(null)
+    toast.success('Saved')
   }
 
   async function deleteJob(id: string) {
-    const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE' })
-    if (!res.ok) return
-    setJobs(prev => prev.filter(j => j.id !== id))
+    const res = await authedFetch(`/api/jobs/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      toast.error('Failed to delete job')
+      return
+    }
+    setJobs((prev) => prev.filter((j) => j.id !== id))
+    toast.success('Deleted')
+  }
+
+  function handleCaptured(captured: Captured) {
+    if (captured.type === 'job') {
+      const job = captured.job
+      setJobs((prev) => [job, ...prev.filter((j) => j.id !== job.id)])
+    } else {
+      const item = captured.item
+      setResearch((prev) => [item, ...prev.filter((r) => r.id !== item.id)])
+    }
   }
 
   async function updateStatus(id: string, status: string) {
-    await fetch(`/api/jobs/${id}`, {
+    setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, status } : j)))
+    await authedFetch(`/api/jobs/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
   }
 
   async function saveNotes(id: string, notes: string) {
-    await fetch(`/api/jobs/${id}`, {
+    await authedFetch(`/api/jobs/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes }),
     })
   }
 
+  if (!authed) return null
+
   return (
-    <div className="max-w-6xl mx-auto p-8">
-      <div className="flex items-center justify-between mb-8">
+    <AppShell>
+      <div className="flex items-end justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold">Captured Items</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Everything captured from the extension</p>
+          <h1 className="text-xl font-semibold tracking-tight">Captured items</h1>
+          <p className="text-sm text-text2 mt-1">Paste a URL below or use the extension.</p>
         </div>
-        <a href="/tasks" className="text-sm text-gray-500 hover:underline">Tasks →</a>
       </div>
 
-      {loading && <p className="text-sm text-gray-400">Loading...</p>}
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      <PasteCapture onCaptured={handleCaptured} />
+
+      {loading && <p className="text-sm text-text3">Loading...</p>}
+      {error && <p className="text-sm text-accent3">{error}</p>}
 
       {!loading && !error && (
         <>
-          <section className="mb-10">
-            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
-              Jobs ({jobs.length})
-            </h2>
+          <section className="mb-12">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-[11px] font-medium uppercase tracking-wide text-text3">
+                Jobs
+              </h2>
+              <span className="text-[11px] text-text3">({jobs.length})</span>
+            </div>
+
             {jobs.length === 0 ? (
-              <p className="text-sm text-gray-400">No jobs captured yet.</p>
+              <EmptyState
+                icon={<Briefcase size={32} strokeWidth={1.5} />}
+                title="No jobs yet"
+                subtitle="Use the Chrome extension to capture a job posting."
+              />
             ) : (
-              <div className="bg-white border rounded-lg overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      {['Company', 'Role', 'Location', 'Deadline', 'Status', 'Link', ''].map((h, i) => (
-                        <th key={i} className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {jobs.map(job => (
-                      <React.Fragment key={job.id}>
-                        <tr>
-                          {editingId === job.id ? (
-                            <>
-                              <td className="px-4 py-2">
-                                <input value={editState.company} onChange={e => setEditState(s => ({ ...s, company: e.target.value }))}
-                                  className="border rounded px-2 py-1 text-xs w-full" />
-                              </td>
-                              <td className="px-4 py-2">
-                                <input value={editState.role} onChange={e => setEditState(s => ({ ...s, role: e.target.value }))}
-                                  className="border rounded px-2 py-1 text-xs w-full" />
-                              </td>
-                              <td className="px-4 py-2">
-                                <input value={editState.location} onChange={e => setEditState(s => ({ ...s, location: e.target.value }))}
-                                  className="border rounded px-2 py-1 text-xs w-full" />
-                              </td>
-                              <td className="px-4 py-2">
-                                <input value={editState.deadline} onChange={e => setEditState(s => ({ ...s, deadline: e.target.value }))}
-                                  className="border rounded px-2 py-1 text-xs w-full" />
-                              </td>
-                              <td className="px-4 py-2 text-gray-400 text-xs">{job.status}</td>
-                              <td className="px-4 py-2">
-                                <a href={job.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Open ↗</a>
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap">
-                                <button onClick={() => saveEdit(job.id)} className="text-xs text-green-600 hover:underline mr-3">Save</button>
-                                <button onClick={() => setEditingId(null)} className="text-xs text-gray-400 hover:underline">Cancel</button>
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="px-4 py-3 font-medium">{job.company}</td>
-                              <td className="px-4 py-3 text-gray-700 max-w-[200px] truncate">{job.role}</td>
-                              <td className="px-4 py-3 text-gray-500 text-xs">{job.location || '—'}</td>
-                              <td className="px-4 py-3 text-gray-400 text-xs">{job.deadline}</td>
-                              <td className="px-4 py-3">
-                                <select
-                                  value={job.status}
-                                  onChange={e => {
-                                    const status = e.target.value
-                                    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status } : j))
-                                    updateStatus(job.id, status)
-                                  }}
-                                  className="text-xs border rounded px-2 py-1 bg-white"
-                                >
-                                  {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                              </td>
-                              <td className="px-4 py-3">
-                                <a href={job.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Open ↗</a>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <a href="/tasks" className="text-xs text-gray-400 hover:underline mr-3">
-                                  {taskCounts[job.id] ? `${taskCounts[job.id]} task${taskCounts[job.id] > 1 ? 's' : ''}` : 'Tasks'}
-                                </a>
-                                <button onClick={() => startEdit(job)} className="text-xs text-gray-500 hover:underline mr-3">Edit</button>
-                                <button onClick={() => deleteJob(job.id)} className="text-xs text-red-500 hover:underline">Delete</button>
-                              </td>
-                            </>
-                          )}
-                        </tr>
-                        <tr className="bg-gray-50/30">
-                          <td colSpan={7} className="px-4 pb-3 pt-1">
-                            <div className="flex gap-6">
-                              <textarea
-                                defaultValue={job.notes ?? ''}
-                                onBlur={e => saveNotes(job.id, e.target.value)}
-                                placeholder="Notes..."
-                                rows={1}
-                                className="flex-1 text-xs text-gray-600 border-0 bg-transparent resize-none focus:outline-none placeholder-gray-300"
-                              />
-                              {job.events.length > 0 && (
-                                <div className="flex gap-3 items-center shrink-0">
-                                  {job.events.map(ev => (
-                                    <span key={ev.id} className="text-xs text-gray-400">
-                                      {ev.toStatus} — {timeAgo(ev.createdAt)}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-3">
+                {jobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    taskCount={taskCounts[job.id]}
+                    onStatusChange={updateStatus}
+                    onNotesChange={saveNotes}
+                    onDelete={deleteJob}
+                    onEdit={(j) =>
+                      setEdit({
+                        id: j.id,
+                        company: j.company,
+                        role: j.role,
+                        location: j.location ?? '',
+                        deadline: j.deadline,
+                      })
+                    }
+                  />
+                ))}
               </div>
             )}
           </section>
 
           <section>
-            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
-              Research ({research.length})
-            </h2>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-[11px] font-medium uppercase tracking-wide text-text3">
+                Research
+              </h2>
+              <span className="text-[11px] text-text3">({research.length})</span>
+            </div>
+
             {research.length === 0 ? (
-              <p className="text-sm text-gray-400">No research captured yet.</p>
+              <EmptyState
+                icon={<Search size={32} strokeWidth={1.5} />}
+                title="No research yet"
+                subtitle="Save articles and research notes from the extension."
+              />
             ) : (
-              <div className="space-y-2">
-                {research.map(item => (
-                  <div key={item.id} className="bg-white border rounded-lg px-4 py-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-400">{item.domain || item.sourceUrl || 'No source'}</span>
-                      {item.sourceUrl && (
-                        <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline">
-                          Open ↗
-                        </a>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-700 line-clamp-3">{item.content}</p>
-                  </div>
+              <div className="space-y-3">
+                {research.map((item) => (
+                  <ResearchCard key={item.id} item={item} />
                 ))}
               </div>
             )}
           </section>
         </>
       )}
-    </div>
+
+      {edit && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEdit(null)
+          }}
+        >
+          <div className="w-full max-w-md glass-pane bg-surface border border-border rounded-lg shadow-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Edit job</h3>
+              <button
+                onClick={() => setEdit(null)}
+                className="text-text2 hover:text-text"
+                aria-label="Close"
+              >
+                <X size={16} strokeWidth={2.25} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <FieldLabel>Company</FieldLabel>
+                <TextInput
+                  value={edit.company}
+                  onChange={(e) => setEdit({ ...edit, company: e.target.value })}
+                />
+              </div>
+              <div>
+                <FieldLabel>Role</FieldLabel>
+                <TextInput
+                  value={edit.role}
+                  onChange={(e) => setEdit({ ...edit, role: e.target.value })}
+                />
+              </div>
+              <div>
+                <FieldLabel>Location</FieldLabel>
+                <TextInput
+                  value={edit.location}
+                  onChange={(e) => setEdit({ ...edit, location: e.target.value })}
+                />
+              </div>
+              <div>
+                <FieldLabel>Deadline</FieldLabel>
+                <TextInput
+                  value={edit.deadline}
+                  onChange={(e) => setEdit({ ...edit, deadline: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setEdit(null)}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={saveEdit}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </AppShell>
   )
 }

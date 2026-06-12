@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { TextInput, FieldLabel } from '@/components/Input'
+import { Button } from '@/components/Button'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -21,45 +23,59 @@ export default function LoginPage() {
     })
     const data = await res.json()
     setLoading(false)
-    if (!res.ok) { setError(data.error || 'Login failed'); return }
+    if (!res.ok) {
+      setError(data.error || 'Login failed')
+      return
+    }
     localStorage.setItem('anthill_token', data.token)
     localStorage.setItem('anthill_user', JSON.stringify(data.user))
     router.push('/jobs')
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white border rounded-lg p-8">
-        <h1 className="text-2xl font-bold mb-1">Anthill</h1>
-        <p className="text-gray-500 mb-6 text-sm">Sign in to your account</p>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-sm glass-pane bg-surface border border-border rounded-lg p-8 shadow-lg">
+        <div className="flex items-center gap-2.5 mb-6">
+          <span className="w-8 h-8 rounded-md bg-accent text-bg grid place-items-center font-bold">
+            A
+          </span>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight">Anthill</h1>
+            <p className="text-xs text-text3">Sign in to your account</p>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              required autoFocus
+            <FieldLabel>Email</FieldLabel>
+            <TextInput
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoFocus
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
-            <input
-              type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            <FieldLabel>Password</FieldLabel>
+            <TextInput
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button
-            type="submit" disabled={loading}
-            className="w-full bg-black text-white py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
-          >
+          {error && <p className="text-sm text-accent3">{error}</p>}
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? 'Signing in...' : 'Sign in'}
-          </button>
+          </Button>
         </form>
-        <p className="mt-4 text-sm text-center text-gray-500">
+
+        <p className="mt-6 text-sm text-center text-text3">
           No account?{' '}
-          <Link href="/signup" className="text-black font-medium hover:underline">Sign up</Link>
+          <Link href="/signup" className="text-accent hover:opacity-80 font-medium">
+            Sign up
+          </Link>
         </p>
       </div>
     </div>

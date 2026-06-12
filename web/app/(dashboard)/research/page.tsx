@@ -1,6 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Search, ArrowUpRight } from 'lucide-react'
+import { Button } from '@/components/Button'
+import { Tag, TypeDot } from '@/components/Tag'
+import { EmptyState } from '@/components/EmptyState'
 
 type Match = {
   id: string
@@ -26,18 +30,28 @@ export default function ResearchPage() {
   const [running, setRunning] = useState(false)
   const [matchMsg, setMatchMsg] = useState('')
 
-  function token() { return localStorage.getItem('anthill_token') }
+  function token() {
+    return localStorage.getItem('anthill_token')
+  }
 
   async function fetchResearch() {
     const tk = token()
-    if (!tk) { router.replace('/login'); return }
+    if (!tk) {
+      router.replace('/login')
+      return
+    }
     const res = await fetch('/api/research', { headers: { Authorization: `Bearer ${tk}` } })
-    if (res.status === 401) { router.replace('/login'); return }
+    if (res.status === 401) {
+      router.replace('/login')
+      return
+    }
     setItems(await res.json())
     setLoading(false)
   }
 
-  useEffect(() => { fetchResearch() }, [])
+  useEffect(() => {
+    fetchResearch()
+  }, [])
 
   async function runMatching() {
     setRunning(true)
@@ -58,105 +72,109 @@ export default function ResearchPage() {
       headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
-    setItems(prev =>
-      prev.map(item => ({
+    setItems((prev) =>
+      prev.map((item) => ({
         ...item,
-        matches: item.matches.map(m => m.id === matchId ? { ...m, status } : m),
+        matches: item.matches.map((m) => (m.id === matchId ? { ...m, status } : m)),
       }))
     )
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-end justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold">Research</h2>
-          <p className="text-sm text-gray-400 mt-0.5">Saved from the extension</p>
+          <h1 className="text-xl font-semibold tracking-tight">Research</h1>
+          <p className="text-sm text-text2 mt-1">Saved from the extension.</p>
         </div>
         <div className="flex items-center gap-3">
-          {matchMsg && <span className="text-xs text-gray-500">{matchMsg}</span>}
-          <button
-            onClick={runMatching}
-            disabled={running}
-            className="text-sm bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50 transition-colors"
-          >
-            {running ? 'Running...' : 'Run Matching'}
-          </button>
+          {matchMsg && <span className="text-[11px] text-text2">{matchMsg}</span>}
+          <Button onClick={runMatching} disabled={running}>
+            {running ? 'Running...' : 'Run matching'}
+          </Button>
         </div>
       </div>
 
       {loading ? (
-        <p className="text-gray-400 text-sm">Loading...</p>
+        <p className="text-sm text-text3">Loading...</p>
       ) : items.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-sm">No research yet.</p>
-          <p className="text-xs mt-1">Use the extension to save research content.</p>
-        </div>
+        <EmptyState
+          icon={<Search size={32} strokeWidth={1.5} />}
+          title="No research yet"
+          subtitle="Use the extension to save research content."
+        />
       ) : (
         <div className="space-y-3">
-          {items.map(item => (
-            <div key={item.id} className="bg-white border rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  {item.domain && (
-                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                      {item.domain}
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className="group glass-pane bg-surface border border-border rounded-lg p-4 transition-colors duration-150 hover:border-border2"
+            >
+              <div className="flex items-start gap-3">
+                <div className="pt-1.5">
+                  <TypeDot color="accent2" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    {item.domain && <Tag variant="accent2">{item.domain}</Tag>}
+                    <span className="text-[11px] text-text3">
+                      {new Date(item.createdAt).toLocaleDateString()}
                     </span>
-                  )}
-                  <span className="text-xs text-gray-300">
-                    {new Date(item.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                {item.sourceUrl && (
-                  <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-blue-500 hover:underline">
-                    Source ↗
-                  </a>
-                )}
-              </div>
+                    {item.sourceUrl && (
+                      <a
+                        href={item.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] text-text2 hover:text-accent2 transition-colors ml-auto"
+                      >
+                        <ArrowUpRight size={11} strokeWidth={2.25} /> Source
+                      </a>
+                    )}
+                  </div>
 
-              <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">
-                {item.content}
-              </p>
+                  <p className="text-sm text-text2 leading-relaxed line-clamp-3">{item.content}</p>
 
-              {item.matches.length > 0 && (
-                <div className="mt-3 pt-3 border-t space-y-2">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Matched tasks</p>
-                  {item.matches.map(match => (
-                    <div key={match.id} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-medium truncate">{match.task.title}</span>
-                        <span className="text-xs text-gray-400 shrink-0">
-                          {Math.round(match.matchScore * 100)}%
-                        </span>
-                        {match.matchedKeywords.length > 0 && (
-                          <span className="text-xs text-gray-300 shrink-0 hidden sm:inline">
-                            [{match.matchedKeywords.slice(0, 3).join(', ')}]
-                          </span>
-                        )}
+                  {item.matches.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-border space-y-2">
+                      <div className="text-[10px] font-medium uppercase tracking-wide text-text3">
+                        Matched tasks
                       </div>
-                      {match.status === 'PENDING' ? (
-                        <div className="flex gap-2 shrink-0 ml-2">
-                          <button onClick={() => updateMatch(match.id, 'ACCEPTED')}
-                            className="text-xs text-green-600 hover:text-green-700 font-medium">
-                            Accept
-                          </button>
-                          <button onClick={() => updateMatch(match.id, 'REJECTED')}
-                            className="text-xs text-gray-400 hover:text-red-500">
-                            Reject
-                          </button>
+                      {item.matches.map((match) => (
+                        <div key={match.id} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm text-text truncate">{match.task.title}</span>
+                            <span className="text-[11px] text-text3 shrink-0">
+                              {Math.round(match.matchScore * 100)}%
+                            </span>
+                          </div>
+                          {match.status === 'PENDING' ? (
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                onClick={() => updateMatch(match.id, 'ACCEPTED')}
+                                className="text-xs text-accent hover:opacity-80 font-medium"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => updateMatch(match.id, 'REJECTED')}
+                                className="text-xs text-text3 hover:text-accent3"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          ) : (
+                            <Tag
+                              variant={match.status === 'ACCEPTED' ? 'accent' : 'default'}
+                            >
+                              {match.status}
+                            </Tag>
+                          )}
                         </div>
-                      ) : (
-                        <span className={`text-xs font-medium shrink-0 ml-2 ${
-                          match.status === 'ACCEPTED' ? 'text-green-600' : 'text-gray-300'
-                        }`}>
-                          {match.status}
-                        </span>
-                      )}
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>

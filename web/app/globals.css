@@ -1,3 +1,260 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ────────────────────────────────────────────────────────────────
+   Base palette (dark, default)
+   ──────────────────────────────────────────────────────────────── */
+:root {
+  --bg: #0E0E11;
+  --tint-r: 22; --tint-g: 22; --tint-b: 27;
+  --tint-r2: 28; --tint-g2: 28; --tint-b2: 35;
+  --tint-r3: 35; --tint-g3: 35; --tint-b3: 44;
+  --card-opacity: 1;
+  --blur: 0px;
+  --surface:  rgba(var(--tint-r),  var(--tint-g),  var(--tint-b),  var(--card-opacity));
+  --surface2: rgba(var(--tint-r2), var(--tint-g2), var(--tint-b2), var(--card-opacity));
+  --surface3: rgba(var(--tint-r3), var(--tint-g3), var(--tint-b3), var(--card-opacity));
+  --border: #24242E;
+  --border2: #2E2E3A;
+
+  --accent: #B8E62E;
+  --accent-soft: rgba(184, 230, 46, 0.12);
+  --accent2: #8B7CFF;
+  --accent2-soft: rgba(139, 124, 255, 0.12);
+  --accent3: #FF6B7A;
+  --warn: #F0A030;
+
+  --text: #ECECF1;
+  --text2: #9090A0;
+  --text3: #5A5A6A;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  --bg-image: none;
+  --bg-overlay: rgba(0, 0, 0, 0);
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Accent overrides
+   ──────────────────────────────────────────────────────────────── */
+[data-accent="ticktick"] { --accent: #4772FA; --accent-soft: rgba(71, 114, 250, 0.12); }
+[data-accent="blue"]   { --accent: #4DA8FF; --accent-soft: rgba(77, 168, 255, 0.12); }
+[data-accent="violet"] { --accent: #A78BFA; --accent-soft: rgba(167, 139, 250, 0.12); }
+[data-accent="amber"]  { --accent: #F0A030; --accent-soft: rgba(240, 160, 48, 0.12); }
+[data-accent="mono"]   { --accent: #E5E5EA; --accent-soft: rgba(229, 229, 234, 0.10); }
+
+/* ────────────────────────────────────────────────────────────────
+   Work-mode presets
+   ──────────────────────────────────────────────────────────────── */
+[data-mood="focus"] {
+  --bg: #0A0A0C;
+  --tint-r: 18; --tint-g: 18; --tint-b: 22;
+  --tint-r2: 24; --tint-g2: 24; --tint-b2: 28;
+  --tint-r3: 32; --tint-g3: 32; --tint-b3: 38;
+  --accent: #E5E5EA; --accent-soft: rgba(229, 229, 234, 0.10);
+  --accent2: #888888;
+}
+[data-mood="midnight"] {
+  --bg: #0B1220;
+  --tint-r: 18; --tint-g: 24; --tint-b: 38;
+  --tint-r2: 24; --tint-g2: 32; --tint-b2: 50;
+  --tint-r3: 32; --tint-g3: 42; --tint-b3: 64;
+  --accent: #6BA8FF; --accent-soft: rgba(107, 168, 255, 0.14);
+  --accent2: #B0C4DE;
+}
+[data-mood="forest"] {
+  --bg: #0E1A14;
+  --tint-r: 18; --tint-g: 30; --tint-b: 24;
+  --tint-r2: 24; --tint-g2: 40; --tint-b2: 32;
+  --tint-r3: 32; --tint-g3: 52; --tint-b3: 42;
+  --accent: #88D982; --accent-soft: rgba(136, 217, 130, 0.14);
+  --accent2: #C8B568;
+}
+[data-mood="sunset"] {
+  --bg: #1A1014;
+  --tint-r: 34; --tint-g: 22; --tint-b: 28;
+  --tint-r2: 44; --tint-g2: 28; --tint-b2: 34;
+  --tint-r3: 56; --tint-g3: 36; --tint-b3: 42;
+  --accent: #FF9F6B; --accent-soft: rgba(255, 159, 107, 0.14);
+  --accent2: #FFB8B8;
+}
+[data-mood="paper"] {
+  --bg: #F5F2EA;
+  --tint-r: 255; --tint-g: 253; --tint-b: 248;
+  --tint-r2: 245; --tint-g2: 242; --tint-b2: 233;
+  --tint-r3: 235; --tint-g3: 230; --tint-b3: 218;
+  --border: #DDD8CC; --border2: #C8C2B2;
+  --text: #1A1714; --text2: #5C564A; --text3: #948D7C;
+  --accent: #6B7F2E; --accent-soft: rgba(107, 127, 46, 0.14);
+  --accent2: #8B6F4A;
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+[data-mood="cyber"] {
+  --bg: #0A0612;
+  --tint-r: 18; --tint-g: 12; --tint-b: 30;
+  --tint-r2: 26; --tint-g2: 18; --tint-b2: 42;
+  --tint-r3: 38; --tint-g3: 26; --tint-b3: 58;
+  --accent: #C8FF00; --accent-soft: rgba(200, 255, 0, 0.14);
+  --accent2: #FF4DCB;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Light mode (no mood)
+   ──────────────────────────────────────────────────────────────── */
+/* Light mode — Notion-warm neutrals: white content, soft-gray chrome.
+   NOTE: deliberately does NOT set --accent-soft, so the active accent
+   (e.g. TickTick blue) keeps its own soft wash instead of being clobbered. */
+[data-mode="light"] {
+  --bg: #FFFFFF;
+  --tint-r: 255; --tint-g: 255; --tint-b: 255;
+  --tint-r2: 244; --tint-g2: 244; --tint-b2: 242;
+  --tint-r3: 235; --tint-g3: 234; --tint-b3: 231;
+  --surface3: rgba(55, 53, 47, 0.06);
+  --border: #EDEDEC; --border2: #E3E2E0;
+  --text: #37352F; --text2: #787774; --text3: #9B9A97;
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Light-mode contrast guards: bright accents (lime default, near-white mono)
+   are unreadable as button/check fills on white. Remap just those two.
+   Specificity (0,2,0) intentionally beats the mood blocks (0,1,0). */
+[data-mode="light"]:not([data-accent])  { --accent: #6B7F2E; --accent-soft: rgba(107, 127, 46, 0.14); }
+[data-mode="light"][data-accent="mono"] { --accent: #6B6B70; --accent-soft: rgba(107, 107, 112, 0.12); }
+
+/* Auto-contrast when wallpaper is bright/dark */
+[data-bg-luma="bright"]:not([data-mode="light"]) {
+  --text: #15151B; --text2: #3A3A48; --text3: #6A6A78;
+  --tint-r: 255; --tint-g: 255; --tint-b: 255;
+  --tint-r2: 248; --tint-g2: 248; --tint-b2: 252;
+  --tint-r3: 236; --tint-g3: 236; --tint-b3: 240;
+  --border: rgba(0, 0, 0, 0.08); --border2: rgba(0, 0, 0, 0.14);
+}
+[data-bg-luma="dark"][data-mode="light"] {
+  --text: #ECECF1; --text2: #C0C0CA; --text3: #8A8A98;
+  --tint-r: 22; --tint-g: 22; --tint-b: 27;
+  --tint-r2: 28; --tint-g2: 28; --tint-b2: 35;
+  --tint-r3: 35; --tint-g3: 35; --tint-b3: 44;
+  --border: rgba(255, 255, 255, 0.08); --border2: rgba(255, 255, 255, 0.14);
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Density + font
+   ──────────────────────────────────────────────────────────────── */
+[data-font="sm"] { font-size: 14px; }
+[data-font="md"], :root { font-size: 15px; }
+[data-font="lg"] { font-size: 16px; }
+
+/* ────────────────────────────────────────────────────────────────
+   Body + typography
+   ──────────────────────────────────────────────────────────────── */
+html {
+  background: var(--bg);
+  transition: background-color 200ms ease;
+}
+
+body {
+  background: transparent;
+  color: var(--text);
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+  position: relative;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text3);
+}
+
+input, textarea, select {
+  color: var(--text);
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Wallpaper layer (behind everything)
+   ──────────────────────────────────────────────────────────────── */
+.wallpaper {
+  position: fixed; inset: 0;
+  z-index: -2;
+  background: var(--bg);
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  transition: opacity 300ms ease, filter 300ms ease;
+}
+.wallpaper::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+}
+
+[data-bg="gradient"] .wallpaper {
+  background: linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--accent) 18%, var(--bg)) 100%);
+}
+[data-bg="glow"] .wallpaper {
+  background: var(--bg);
+}
+[data-bg="glow"] .wallpaper::before {
+  content: '';
+  position: absolute;
+  width: 60vw; height: 60vw;
+  top: -20vw; right: -15vw;
+  background: radial-gradient(circle, var(--accent-soft) 0%, transparent 60%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+[data-bg="texture"] .wallpaper {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 24px 24px, 48px 48px;
+  background-position: 0 0, 12px 12px;
+}
+[data-bg="black"] .wallpaper { background: #000; }
+[data-bg="focus"] .wallpaper {
+  background: var(--bg);
+  filter: saturate(0.6);
+}
+
+/* Glass mode */
+[data-glass="on"] .glass-pane {
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* Scrollbar */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 999px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* Toast animation */
+@keyframes toast-in {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.toast-enter { animation: toast-in 200ms cubic-bezier(.4, 0, .2, 1); }

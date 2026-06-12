@@ -1,179 +1,241 @@
-﻿'use client'
-import { useEffect, useState } from 'react'
+'use client'
+import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Plus, ChevronRight, ChevronDown, Sun, CalendarDays, Calendar, Inbox, CheckCircle2 } from 'lucide-react'
+import { AppShell } from '@/components/AppShell'
+import { TaskRow, type Task } from '@/components/TaskRow'
+import { TaskDetailPane } from '@/components/TaskDetailPane'
+import { EmptyState } from '@/components/EmptyState'
+import { useToast } from '@/components/Toast'
+import { authedFetch, getToken } from '@/lib/api-client'
+import {
+  pendingForView, completedForView, seedDeadlineForView,
+  type TaskView,
+} from '@/lib/smart-date'
 
 type Job = { id: string; company: string; role: string }
-type Task = {
-  id: string
-  title: string
-  completed: boolean
-  deadline: string | null
-  linkedJobId: string | null
-  linkedJob: { id: string; company: string; role: string } | null
+
+const VIEW_META: Record<TaskView, { label: string; Icon: typeof Sun; empty: string }> = {
+  today:     { label: 'Today',       Icon: Sun,         empty: 'Nothing due today. Add a task to get going.' },
+  next7:     { label: 'Next 7 Days', Icon: CalendarDays, empty: 'No tasks due in the next 7 days.' },
+  upcoming:  { label: 'Upcoming',    Icon: Calendar,    empty: 'No upcoming tasks scheduled.' },
+  nodate:    { label: 'No date',     Icon: Inbox,       empty: 'No undated tasks. This is your inbox.' },
+  completed: { label: 'Completed',   Icon: CheckCircle2, empty: 'No completed tasks yet.' },
 }
+const VIEWS: TaskView[] = ['today', 'next7', 'upcoming', 'nodate', 'completed']
 
 export default function TasksPage() {
+  const router = useRouter()
+  const toast = useToast()
   const [tasks, setTasks] = useState<Task[]>([])
   const [jobs, setJobs] = useState<Job[]>([])
   const [title, setTitle] = useState('')
   const [jobId, setJobId] = useState('')
-  const [deadline, setDeadline] = useState('')
+  const [view, setView] = useState<TaskView>('today')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [completedOpen, setCompletedOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [authed, setAuthed] = useState(false)
+  const addRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    if (!getToken()) {
+      router.replace('/login')
+      return
+    }
+    setAuthed(true)
     Promise.all([
-      fetch('/api/tasks').then(r => r.json()),
-      fetch('/api/items').then(r => r.json()),
-    ]).then(([tasksData, itemsData]) => {
-      setTasks(Array.isArray(tasksData) ? tasksData : [])
-      setJobs(Array.isArray(itemsData.jobs) ? itemsData.jobs : [])
-    }).finally(() => setLoading(false))
+      authedFetch('/api/tasks').then((r) => r.json()),
+      authedFetch('/api/items').then((r) => r.json()),
+    ])
+      .then(([tasksData, itemsData]) => {
+        setTasks(Array.isArray(tasksData) ? tasksData : [])
+        setJobs(Array.isArray(itemsData?.jobs) ? itemsData.jobs : [])
+      })
+      .finally(() => setLoading(false))
+  }, [router])
+
+  // Active smart list is carried in the URL hash (set by the sidebar).
+  useEffect(() => {
+    const read = () => {
+      const h = window.location.hash.slice(1)
+      setView(VIEWS.includes(h as TaskView) ? (h as TaskView) : 'today')
+    }
+    read()
+    window.addEventListener('hashchange', read)
+    return () => window.removeEventListener('hashchange', read)
   }, [])
 
   async function addTask() {
-    if (!title.trim()) return
-    const res = await fetch('/api/tasks', {
+    const t = title.trim()
+    if (!t) return
+    const res = await authedFetch('/api/tasks', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: title.trim(),
+        title: t,
         linkedJobId: jobId || null,
-        deadline: deadline || null,
+        deadline: seedDeadlineForView(view),
       }),
     })
-    if (!res.ok) return
+    if (!res.ok) {
+      toast.error('Failed to add task')
+      return
+    }
     const task = await res.json()
-    setTasks(prev => [task, ...prev])
+    setTasks((prev) => [task, ...prev])
     setTitle('')
-    setJobId('')
-    setDeadline('')
+    addRef.current?.focus()
   }
 
-  async function toggle(id: string, completed: boolean) {
-    const res = await fetch(`/api/tasks/${id}`, {
+  // Optimistic per-field update shared by the row checkbox and the detail pane.
+  async function patch(id: string, partial: Record<string, unknown>) {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...partial } : t)))
+    const res = await authedFetch(`/api/tasks/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ completed }),
+      body: JSON.stringify(partial),
     })
-    if (res.ok) setTasks(prev => prev.map(t => t.id === id ? { ...t, completed } : t))
+    if (!res.ok) toast.error('Failed to save changes')
   }
 
   async function remove(id: string) {
-    const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' })
-    if (res.ok) setTasks(prev => prev.filter(t => t.id !== id))
+    const prev = tasks
+    setTasks((p) => p.filter((t) => t.id !== id))
+    if (selectedId === id) setSelectedId(null)
+    const res = await authedFetch(`/api/tasks/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      setTasks(prev)
+      toast.error('Failed to delete task')
+    }
   }
 
-  const pending = tasks.filter(t => !t.completed)
-  const done = tasks.filter(t => t.completed)
+  if (!authed) return null
+
+  const meta = VIEW_META[view]
+  const pending = pendingForView(tasks, view)
+  const done = completedForView(tasks, view)
+  const selected = tasks.find((t) => t.id === selectedId) ?? null
+  const count = view === 'completed' ? done.length : pending.length
 
   return (
-    <div className="max-w-2xl mx-auto p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-xl font-semibold">Tasks</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{pending.length} remaining</p>
-        </div>
-        <a href="/items" className="text-sm text-gray-500 hover:underline">← Jobs</a>
-      </div>
-
-      {/* Add task form */}
-      <div className="bg-white border rounded-lg p-4 mb-8 flex flex-col gap-3">
-        <input
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && addTask()}
-          placeholder="New task..."
-          className="text-sm border rounded px-3 py-2 w-full focus:outline-none focus:ring-1 focus:ring-gray-300"
-        />
-        <div className="flex gap-2">
-          <select
-            value={jobId}
-            onChange={e => setJobId(e.target.value)}
-            className="text-xs border rounded px-2 py-1.5 flex-1 bg-white text-gray-600"
-          >
-            <option value="">No job linked</option>
-            {jobs.map(j => (
-              <option key={j.id} value={j.id}>{j.company} — {j.role}</option>
-            ))}
-          </select>
-          <input
-            type="date"
-            value={deadline}
-            onChange={e => setDeadline(e.target.value)}
-            className="text-xs border rounded px-2 py-1.5 text-gray-600"
-          />
-          <button
-            onClick={addTask}
-            className="text-xs bg-gray-900 text-white rounded px-3 py-1.5 hover:bg-gray-700"
-          >
-            Add
-          </button>
-        </div>
-      </div>
-
-      {loading && <p className="text-sm text-gray-400">Loading...</p>}
-
-      {!loading && tasks.length === 0 && (
-        <p className="text-sm text-gray-400">No tasks yet. Add one above or capture a job.</p>
-      )}
-
-      {!loading && pending.length > 0 && (
-        <section className="mb-8">
-          <div className="divide-y divide-gray-50">
-            {pending.map(task => (
-              <TaskRow key={task.id} task={task} onToggle={toggle} onDelete={remove} />
-            ))}
+    <AppShell fullBleed>
+      <div className="max-w-3xl mx-auto px-6 py-8 lg:px-10">
+        <header className="mb-5">
+          <div className="flex items-center gap-2.5">
+            <meta.Icon size={22} strokeWidth={2} className="text-accent" />
+            <h1 className="text-xl font-semibold tracking-tight text-text">{meta.label}</h1>
           </div>
-        </section>
-      )}
-
-      {!loading && done.length > 0 && (
-        <section>
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Completed</p>
-          <div className="divide-y divide-gray-50 opacity-60">
-            {done.map(task => (
-              <TaskRow key={task.id} task={task} onToggle={toggle} onDelete={remove} />
-            ))}
-          </div>
-        </section>
-      )}
-    </div>
-  )
-}
-
-function TaskRow({ task, onToggle, onDelete }: {
-  task: Task
-  onToggle: (id: string, completed: boolean) => void
-  onDelete: (id: string) => void
-}) {
-  return (
-    <div className="flex items-center gap-3 py-3 group">
-      <input
-        type="checkbox"
-        checked={task.completed}
-        onChange={e => onToggle(task.id, e.target.checked)}
-        className="shrink-0 w-4 h-4"
-      />
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm ${task.completed ? 'line-through text-gray-300' : 'text-gray-800'}`}>
-          {task.title}
-        </p>
-        {task.linkedJob && (
-          <p className="text-xs text-gray-400 mt-0.5">
-            {task.linkedJob.company} — {task.linkedJob.role}
+          <p className="text-sm text-text2 mt-1">
+            {view === 'today' && (
+              <span>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} · </span>
+            )}
+            {count} task{count !== 1 ? 's' : ''}
           </p>
+        </header>
+
+        {view !== 'completed' && (
+          <div className="flex items-center gap-2 px-3 py-2 mb-5 rounded-md border border-border bg-surface focus-within:border-accent transition-colors">
+            <Plus size={16} strokeWidth={2.5} className="shrink-0 text-text3" />
+            <input
+              ref={addRef}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addTask()}
+              placeholder={`Add task to "${meta.label}"…`}
+              className="flex-1 min-w-0 bg-transparent border-none outline-none text-sm text-text placeholder:text-text3"
+            />
+            {jobs.length > 0 && (
+              <select
+                value={jobId}
+                onChange={(e) => setJobId(e.target.value)}
+                className="shrink-0 max-w-[150px] bg-transparent border-none outline-none text-xs text-text2 cursor-pointer"
+                title="Link a job"
+              >
+                <option value="">No job</option>
+                {jobs.map((j) => (
+                  <option key={j.id} value={j.id}>{j.company} — {j.role}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+
+        {loading && <p className="text-sm text-text3">Loading…</p>}
+
+        {!loading && view === 'completed' && (
+          done.length === 0 ? (
+            <EmptyState icon={<meta.Icon size={32} strokeWidth={1.5} />} title="All clear" subtitle={meta.empty} />
+          ) : (
+            <div className="space-y-0.5 opacity-80">
+              {done.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  selected={task.id === selectedId}
+                  onToggle={(id, c) => patch(id, { completed: c })}
+                  onOpen={setSelectedId}
+                  onDelete={remove}
+                />
+              ))}
+            </div>
+          )
+        )}
+
+        {!loading && view !== 'completed' && (
+          <>
+            {pending.length === 0 && done.length === 0 && (
+              <EmptyState icon={<meta.Icon size={32} strokeWidth={1.5} />} title={`No tasks in ${meta.label}`} subtitle={meta.empty} />
+            )}
+
+            {pending.length > 0 && (
+              <div className="space-y-0.5">
+                {pending.map((task) => (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    selected={task.id === selectedId}
+                    onToggle={(id, c) => patch(id, { completed: c })}
+                    onOpen={setSelectedId}
+                    onDelete={remove}
+                  />
+                ))}
+              </div>
+            )}
+
+            {done.length > 0 && (
+              <section className="mt-6">
+                <button
+                  onClick={() => setCompletedOpen((o) => !o)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-text2 hover:text-text transition-colors mb-1"
+                >
+                  {completedOpen ? <ChevronDown size={14} strokeWidth={2.25} /> : <ChevronRight size={14} strokeWidth={2.25} />}
+                  Completed ({done.length})
+                </button>
+                {completedOpen && (
+                  <div className="space-y-0.5 opacity-70">
+                    {done.map((task) => (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        selected={task.id === selectedId}
+                        onToggle={(id, c) => patch(id, { completed: c })}
+                        onOpen={setSelectedId}
+                        onDelete={remove}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+          </>
         )}
       </div>
-      {task.deadline && (
-        <span className="text-xs text-gray-400 shrink-0">
-          {new Date(task.deadline).toLocaleDateString()}
-        </span>
-      )}
-      <button
-        onClick={() => onDelete(task.id)}
-        className="text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 shrink-0 text-base leading-none"
-      >
-        ×
-      </button>
-    </div>
+
+      <TaskDetailPane
+        task={selected}
+        onClose={() => setSelectedId(null)}
+        onPatch={patch}
+        onDelete={remove}
+      />
+    </AppShell>
   )
 }

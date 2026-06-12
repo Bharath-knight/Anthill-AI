@@ -1,14 +1,17 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getAuthUser } from '@/lib/auth'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const userId = process.env.DEV_USER_ID
-  if (!userId) return NextResponse.json({ error: 'DEV_USER_ID not set' }, { status: 500 })
+  const auth = await getAuthUser(request)
+  if (auth instanceof Response) return auth
 
-  const task = await prisma.task.findFirst({ where: { id: params.id, userId } })
+  const task = await prisma.task.findFirst({
+    where: { id: params.id, userId: auth.userId },
+  })
   if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await request.json()
@@ -28,10 +31,12 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const userId = process.env.DEV_USER_ID
-  if (!userId) return NextResponse.json({ error: 'DEV_USER_ID not set' }, { status: 500 })
+  const auth = await getAuthUser(request)
+  if (auth instanceof Response) return auth
 
-  const task = await prisma.task.findFirst({ where: { id: params.id, userId } })
+  const task = await prisma.task.findFirst({
+    where: { id: params.id, userId: auth.userId },
+  })
   if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   await prisma.task.delete({ where: { id: params.id } })
