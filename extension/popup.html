@@ -6,27 +6,56 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div style="padding:16px">
-    <div style="font-weight:700;font-size:15px;margin-bottom:16px">Anthill</div>
-
-    <div id="url-display" class="text-muted" style="margin-bottom:12px;font-size:11px;word-break:break-all"></div>
-
-    <button class="btn btn-primary" id="capture-btn">Capture This Job</button>
-
-    <div id="status-msg" style="margin-top:12px;font-size:12px;display:none"></div>
-
-    <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb">
-      <div style="font-size:11px;color:#6b7280;margin-bottom:4px">API URL</div>
-      <div style="display:flex;gap:6px">
-        <input id="api-url-input" type="text" placeholder="https://your-app.vercel.app"
-          style="flex:1;font-size:11px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;outline:none" />
-        <button id="save-url-btn"
-          style="font-size:11px;padding:4px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer">
-          Save
-        </button>
-      </div>
+  <div class="header">
+    <div class="logo">
+      <span class="logo-mark">A</span>
+      <span class="logo-text">Anthill</span>
+    </div>
+    <div id="user-info" class="header-right" style="display:none">
+      <span id="user-email" class="user-email"></span>
+      <button id="logout-btn" class="btn-link">Sign out</button>
     </div>
   </div>
+
+  <!-- Login section -->
+  <section id="login-section" class="section">
+    <div class="muted small mb-12">Sign in to capture content into your Anthill account.</div>
+    <div class="form-group">
+      <label for="login-email">Email</label>
+      <input id="login-email" type="email" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label for="login-password">Password</label>
+      <input id="login-password" type="password" autocomplete="current-password" />
+    </div>
+    <button id="login-btn" class="btn btn-primary">Sign in</button>
+    <div id="login-status" class="alert" style="display:none"></div>
+    <div class="muted small mt-12 center">
+      No account?
+      <a id="open-signup" href="#" class="link">Sign up at anthill-ai.vercel.app</a>
+    </div>
+  </section>
+
+  <!-- Capture section -->
+  <section id="capture-section" class="section">
+    <div class="url-row">
+      <div class="muted small mb-4">Current page</div>
+      <div id="url-display" class="preview-box"></div>
+    </div>
+
+    <button id="capture-btn" class="btn btn-primary">Capture this page</button>
+    <div id="capture-status" class="alert" style="display:none"></div>
+  </section>
+
+  <!-- Settings panel (always available) -->
+  <div class="settings-panel">
+    <div class="muted small mb-4">API URL</div>
+    <div class="api-url-row">
+      <input id="api-url-input" type="text" placeholder="https://anthill-ai.vercel.app" />
+      <button id="save-url-btn" class="btn btn-secondary btn-sm">Save</button>
+    </div>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

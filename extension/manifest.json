@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Anthill",
-  "version": "1.0.2",
-  "description": "Capture jobs, research, and notes from your clipboard",
+  "version": "1.0.3",
+  "description": "Capture jobs from any page into your Anthill account.",
   "permissions": ["activeTab", "storage"],
   "host_permissions": [
     "https://anthill-ai.vercel.app/*"
