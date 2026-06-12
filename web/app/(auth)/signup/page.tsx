@@ -2,6 +2,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Loader2Icon } from 'lucide-react'
+import { AuthShell } from '@/components/auth-shell'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -22,55 +28,79 @@ export default function SignupPage() {
     })
     const data = await res.json()
     setLoading(false)
-    if (!res.ok) { setError(data.error || 'Signup failed'); return }
+    if (!res.ok) {
+      setError(data.error || 'Signup failed')
+      return
+    }
     localStorage.setItem('anthill_token', data.token)
     localStorage.setItem('anthill_user', JSON.stringify(data.user))
-    router.push('/jobs')
+    router.push('/items')
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white border rounded-lg p-8">
-        <h1 className="text-2xl font-bold mb-1">Anthill</h1>
-        <p className="text-gray-500 mb-6 text-sm">Create your account</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Name (optional)</label>
-            <input
-              type="text" value={name} onChange={e => setName(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
-            <input
-              type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              required minLength={8} placeholder="Min. 8 characters"
-            />
-          </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button
-            type="submit" disabled={loading}
-            className="w-full bg-black text-white py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
-          >
-            {loading ? 'Creating account...' : 'Create account'}
-          </button>
-        </form>
-        <p className="mt-4 text-sm text-center text-gray-500">
-          Have an account?{' '}
-          <Link href="/login" className="text-black font-medium hover:underline">Sign in</Link>
+    <AuthShell>
+      <div className="mb-8 flex flex-col gap-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
+        <p className="text-sm text-muted-foreground">
+          Start organizing your job search in minutes.
         </p>
       </div>
-    </div>
+
+      <form onSubmit={handleSubmit}>
+        <FieldGroup>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <Field>
+            <FieldLabel htmlFor="name">Name</FieldLabel>
+            <Input
+              id="name"
+              type="text"
+              placeholder="Jane Doe"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
+            <FieldDescription>Optional — how we&apos;ll address you.</FieldDescription>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Min. 8 characters"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+            />
+          </Field>
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading && <Loader2Icon data-icon="inline-start" className="animate-spin" />}
+            {loading ? 'Creating account...' : 'Create account'}
+          </Button>
+        </FieldGroup>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Already have an account?{' '}
+        <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+          Sign in
+        </Link>
+      </p>
+    </AuthShell>
   )
 }

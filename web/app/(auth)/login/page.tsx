@@ -2,6 +2,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Loader2Icon } from 'lucide-react'
+import { AuthShell } from '@/components/auth-shell'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -21,47 +27,67 @@ export default function LoginPage() {
     })
     const data = await res.json()
     setLoading(false)
-    if (!res.ok) { setError(data.error || 'Login failed'); return }
+    if (!res.ok) {
+      setError(data.error || 'Login failed')
+      return
+    }
     localStorage.setItem('anthill_token', data.token)
     localStorage.setItem('anthill_user', JSON.stringify(data.user))
-    router.push('/jobs')
+    router.push('/items')
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white border rounded-lg p-8">
-        <h1 className="text-2xl font-bold mb-1">Anthill</h1>
-        <p className="text-gray-500 mb-6 text-sm">Sign in to your account</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              required autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
-            <input
-              type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              required
-            />
-          </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button
-            type="submit" disabled={loading}
-            className="w-full bg-black text-white py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
-        <p className="mt-4 text-sm text-center text-gray-500">
-          No account?{' '}
-          <Link href="/signup" className="text-black font-medium hover:underline">Sign up</Link>
+    <AuthShell>
+      <div className="mb-8 flex flex-col gap-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+        <p className="text-sm text-muted-foreground">
+          Sign in to your Anthill account to continue.
         </p>
       </div>
-    </div>
+
+      <form onSubmit={handleSubmit}>
+        <FieldGroup>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <Field>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoFocus
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </Field>
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading && <Loader2Icon data-icon="inline-start" className="animate-spin" />}
+            {loading ? 'Signing in...' : 'Sign in'}
+          </Button>
+        </FieldGroup>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{' '}
+        <Link href="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">
+          Sign up
+        </Link>
+      </p>
+    </AuthShell>
   )
 }

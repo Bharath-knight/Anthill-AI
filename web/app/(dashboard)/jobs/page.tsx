@@ -1,6 +1,61 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  ExternalLinkIcon,
+  Trash2Icon,
+  BriefcaseIcon,
+  SearchIcon,
+} from 'lucide-react'
+import { AppShell } from '@/components/app-shell'
+import { StatusSelect, STATUS_OPTIONS } from '@/components/status-badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from '@/components/ui/input-group'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from '@/components/ui/empty'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { toast } from 'sonner'
 
 type Job = {
   id: string
@@ -13,146 +68,221 @@ type Job = {
   createdAt: string
 }
 
-const STATUS_OPTIONS = ['SAVED', 'APPLIED', 'INTERVIEW', 'OFFER', 'REJECTED'] as const
-const STATUS_COLORS: Record<string, string> = {
-  SAVED: 'bg-gray-100 text-gray-600',
-  APPLIED: 'bg-blue-50 text-blue-700',
-  INTERVIEW: 'bg-yellow-50 text-yellow-700',
-  OFFER: 'bg-green-50 text-green-700',
-  REJECTED: 'bg-red-50 text-red-600',
-}
-
 export default function JobsPage() {
   const router = useRouter()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
-  const [company, setCompany] = useState('')
-  const [location, setLocation] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
-  function token() { return localStorage.getItem('anthill_token') }
+  function token() {
+    return localStorage.getItem('anthill_token')
+  }
 
   async function fetchJobs() {
     const tk = token()
-    if (!tk) { router.replace('/login'); return }
+    if (!tk) {
+      router.replace('/login')
+      return
+    }
     const res = await fetch('/api/jobs', { headers: { Authorization: `Bearer ${tk}` } })
-    if (res.status === 401) { router.replace('/login'); return }
+    if (res.status === 401) {
+      router.replace('/login')
+      return
+    }
     setJobs(await res.json())
     setLoading(false)
   }
 
-  useEffect(() => { fetchJobs() }, [])
+  useEffect(() => {
+    fetchJobs()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function updateStatus(id: string, status: string) {
+    setJobs((prev) =>
+      prev.map((j) => (j.id === id ? { ...j, status: status as Job['status'] } : j)),
+    )
     await fetch(`/api/jobs/${id}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
-    setJobs(prev => prev.map(j => j.id === id ? { ...j, status: status as Job['status'] } : j))
   }
 
-  async function deleteJob(id: string) {
-    if (!confirm('Delete this job?')) return
-    await fetch(`/api/jobs/${id}`, {
+  async function confirmDelete() {
+    if (!deleteId) return
+    await fetch(`/api/jobs/${deleteId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token()}` },
     })
-    setJobs(prev => prev.filter(j => j.id !== id))
+    setJobs((prev) => prev.filter((j) => j.id !== deleteId))
+    setDeleteId(null)
+    toast.success('Job deleted.')
   }
 
-  const filtered = jobs.filter(j =>
-    (!company || j.company.toLowerCase().includes(company.toLowerCase())) &&
-    (!location || (j.location || '').toLowerCase().includes(location.toLowerCase())) &&
-    (!statusFilter || j.status === statusFilter)
-  )
+  const filtered = jobs.filter((j) => {
+    const q = search.toLowerCase()
+    const matchesSearch =
+      !q ||
+      j.company.toLowerCase().includes(q) ||
+      j.role.toLowerCase().includes(q) ||
+      (j.location || '').toLowerCase().includes(q)
+    const matchesStatus = statusFilter === 'ALL' || j.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-semibold">Jobs</h2>
-          <p className="text-sm text-gray-400 mt-0.5">Captured from the extension</p>
-        </div>
-        <span className="text-sm text-gray-400">{filtered.length} job{filtered.length !== 1 ? 's' : ''}</span>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-5">
-        <input
-          placeholder="Filter company"
-          value={company}
-          onChange={e => setCompany(e.target.value)}
-          className="border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-black"
-        />
-        <input
-          placeholder="Filter location"
-          value={location}
-          onChange={e => setLocation(e.target.value)}
-          className="border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-black"
-        />
-        <select
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-          className="border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-white"
-        >
-          <option value="">All statuses</option>
-          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </div>
-
-      {loading ? (
-        <p className="text-gray-400 text-sm">Loading...</p>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-sm">No jobs yet.</p>
-          <p className="text-xs mt-1">Use the Chrome extension to capture job postings.</p>
-        </div>
-      ) : (
-        <div className="bg-white border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                {['Company', 'Role', 'Location', 'Deadline', 'Status', 'Link', ''].map(h => (
-                  <th key={h} className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.map(job => (
-                <tr key={job.id} className="hover:bg-gray-50/50">
-                  <td className="px-4 py-3 font-medium">{job.company}</td>
-                  <td className="px-4 py-3 text-gray-700 max-w-[200px] truncate">{job.role}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{job.location || '—'}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{job.deadline}</td>
-                  <td className="px-4 py-3">
-                    <select
-                      value={job.status}
-                      onChange={e => updateStatus(job.id, e.target.value)}
-                      className={`text-xs rounded-full px-2.5 py-1 font-medium cursor-pointer border-0 ${STATUS_COLORS[job.status]}`}
-                    >
-                      {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <a href={job.link} target="_blank" rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline">
-                      Open ↗
-                    </a>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => deleteJob(job.id)}
-                      className="text-xs text-gray-300 hover:text-red-500 transition-colors">
-                      ✕
-                    </button>
-                  </td>
-                </tr>
+    <AppShell title="Jobs" description="Track every application in one pipeline">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <InputGroup className="sm:max-w-xs">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            placeholder="Search company, role, location"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </InputGroup>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="ALL">All statuses</SelectItem>
+              {STATUS_OPTIONS.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s.charAt(0) + s.slice(1).toLowerCase()}
+                </SelectItem>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <span className="text-sm text-muted-foreground sm:ml-auto">
+          {filtered.length} job{filtered.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      <Card className="mt-5">
+        <CardContent className="px-0 py-0">
+          {loading ? (
+            <div className="flex flex-col gap-3 p-6">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-6">
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <BriefcaseIcon />
+                  </EmptyMedia>
+                  <EmptyTitle>
+                    {jobs.length === 0 ? 'No jobs yet' : 'No matches'}
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    {jobs.length === 0
+                      ? 'Use the Chrome extension to capture job postings.'
+                      : 'Try adjusting your search or status filter.'}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Company</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead className="hidden md:table-cell">Location</TableHead>
+                    <TableHead className="hidden lg:table-cell">Deadline</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((job) => (
+                    <TableRow key={job.id}>
+                      <TableCell className="font-medium">{job.company}</TableCell>
+                      <TableCell className="max-w-[220px]">
+                        <span className="block truncate">{job.role}</span>
+                      </TableCell>
+                      <TableCell className="hidden text-muted-foreground md:table-cell">
+                        {job.location || '—'}
+                      </TableCell>
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">
+                        {job.deadline || '—'}
+                      </TableCell>
+                      <TableCell>
+                        <StatusSelect value={job.status} onChange={(s) => updateStatus(job.id, s)} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                asChild
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground hover:text-foreground"
+                                aria-label="Open posting"
+                              >
+                                <a href={job.link} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLinkIcon />
+                                </a>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Open posting</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => setDeleteId(job.id)}
+                                aria-label="Delete"
+                              >
+                                <Trash2Icon />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Delete</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the job and its history. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AppShell>
   )
 }
