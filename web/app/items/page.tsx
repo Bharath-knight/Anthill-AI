@@ -89,6 +89,31 @@ export default function ItemsPage() {
     toast.success('Deleted')
   }
 
+  // Layer 4: one-click reclassify between Jobs and Research.
+  async function moveJobToResearch(id: string) {
+    const res = await authedFetch(`/api/jobs/${id}/reclassify`, { method: 'POST' })
+    if (!res.ok) {
+      toast.error('Failed to move to research')
+      return
+    }
+    const item = await res.json()
+    setJobs((prev) => prev.filter((j) => j.id !== id))
+    setResearch((prev) => [item, ...prev.filter((r) => r.id !== item.id)])
+    toast.success('Moved to research')
+  }
+
+  async function convertResearchToJob(id: string) {
+    const res = await authedFetch(`/api/research/${id}/reclassify`, { method: 'POST' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      toast.error(data.error || 'Failed to convert to job')
+      return
+    }
+    setResearch((prev) => prev.filter((r) => r.id !== id))
+    setJobs((prev) => [data, ...prev.filter((j) => j.id !== data.id)])
+    toast.success('Converted to job')
+  }
+
   function handleCaptured(captured: Captured) {
     if (captured.type === 'job') {
       const job = captured.job
@@ -156,6 +181,7 @@ export default function ItemsPage() {
                     onStatusChange={updateStatus}
                     onNotesChange={saveNotes}
                     onDelete={deleteJob}
+                    onReclassify={moveJobToResearch}
                     onEdit={(j) =>
                       setEdit({
                         id: j.id,
@@ -188,7 +214,7 @@ export default function ItemsPage() {
             ) : (
               <div className="space-y-3">
                 {research.map((item) => (
-                  <ResearchCard key={item.id} item={item} />
+                  <ResearchCard key={item.id} item={item} onConvert={convertResearchToJob} />
                 ))}
               </div>
             )}

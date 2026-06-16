@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Calendar, ArrowUpRight, ChevronDown, ChevronUp, X, Pencil } from 'lucide-react'
+import { Calendar, ArrowUpRight, ChevronDown, ChevronUp, X, Pencil, ArrowLeftRight } from 'lucide-react'
 import { Tag, TypeDot } from './Tag'
 import { StatusSelect } from './StatusBadge'
 
@@ -40,9 +40,10 @@ type Props = {
   onNotesChange?: (id: string, notes: string) => void
   onDelete?: (id: string) => void
   onEdit?: (job: Job) => void
+  onReclassify?: (id: string) => void
 }
 
-export function JobCard({ job, taskCount, onStatusChange, onNotesChange, onDelete, onEdit }: Props) {
+export function JobCard({ job, taskCount, onStatusChange, onNotesChange, onDelete, onEdit, onReclassify }: Props) {
   const [open, setOpen] = useState(false)
   const hasDeadline = job.deadline && job.deadline !== 'Deadline not given'
 
@@ -95,6 +96,16 @@ export function JobCard({ job, taskCount, onStatusChange, onNotesChange, onDelet
                 className="inline-flex items-center gap-1 text-text2 hover:text-text transition-colors"
               >
                 <Pencil size={12} strokeWidth={2.25} /> Edit
+              </button>
+            )}
+            {onReclassify && (
+              <button
+                onClick={() => {
+                  if (confirm('Move this to Research? It will no longer be tracked as a job.')) onReclassify(job.id)
+                }}
+                className="inline-flex items-center gap-1 text-text2 hover:text-text transition-colors"
+              >
+                <ArrowLeftRight size={12} strokeWidth={2.25} /> Not a job
               </button>
             )}
             {onDelete && (
