@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth'
 import { EVENT_TYPES } from '@/lib/calendar'
+import { pushUpdate, pushDelete } from '@/lib/google-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +37,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
   const event = await prisma.calendarEvent.update({ where: { id: params.id }, data })
 
+  // Mirror the edit to Google if connected (non-fatal).
+  try {
+    await pushUpdate(auth.userId, event)
+  } catch (err) {
+    console.error('Google push (update) failed:', err)
+  }
+
   return NextResponse.json({
     id: event.id,
     title: event.title,
@@ -57,5 +65,13 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   await prisma.calendarEvent.delete({ where: { id: params.id } })
+
+  // Mirror the deletion to Google if this event was synced (non-fatal).
+  try {
+    await pushDelete(auth.userId, existing.googleEventId)
+  } catch (err) {
+    console.error('Google push (delete) failed:', err)
+  }
+
   return NextResponse.json({ ok: true })
 }

@@ -20,6 +20,7 @@ model User {
   research       ResearchItem[]
   tasks          Task[]
   calendarEvents CalendarEvent[]
+  googleAccount  GoogleAccount?
 }
 
 model Job {
@@ -123,8 +124,16 @@ model CalendarEvent {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  // Google Calendar two-way sync. source marks where the event originated;
+  // googleEventId links it to the corresponding Google event (null until synced);
+  // googleUpdated is Google's last-modified stamp, used for last-write-wins.
+  source        EventSource @default(ANTHILL)
+  googleEventId String?
+  googleUpdated DateTime?
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, googleEventId])
   @@index([userId, start])
 }
 
@@ -133,4 +142,27 @@ enum EventType {
   RESEARCH
   PERSONAL
   FOCUS
+}
+
+enum EventSource {
+  ANTHILL
+  GOOGLE
+}
+
+// A user's connected Google Calendar. Tokens are stored encrypted (AES-GCM via
+// lib/crypto.ts); never expose them to the client. One account per user (MVP:
+// the primary calendar only).
+model GoogleAccount {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  googleEmail  String
+  accessToken  String
+  refreshToken String
+  expiry       DateTime
+  scope        String
+  syncToken    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

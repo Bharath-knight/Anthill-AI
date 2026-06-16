@@ -13,6 +13,7 @@ export type CalEvent = {
   allDay: boolean
   type: EventType
   notes: string | null
+  source?: 'ANTHILL' | 'GOOGLE' // where the event originated (Google sync)
 }
 
 export type Deadline = {

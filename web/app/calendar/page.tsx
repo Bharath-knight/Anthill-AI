@@ -70,6 +70,18 @@ export default function CalendarPage() {
     reload().finally(() => setLoading(false))
   }, [authed, reload])
 
+  // Handle the return from Google's OAuth consent (?google=connected|denied|error).
+  useEffect(() => {
+    if (!authed) return
+    const g = new URLSearchParams(window.location.search).get('google')
+    if (!g) return
+    if (g === 'connected') toast.success('Google Calendar connected')
+    else if (g === 'denied') toast.error('Google connection cancelled')
+    else toast.error("Couldn't connect Google Calendar")
+    window.history.replaceState({}, '', '/calendar')
+    reload()
+  }, [authed, toast, reload])
+
   function shift(dir: 1 | -1) {
     setAnchor((a) => (view === 'month' ? addMonths(a, dir) : view === 'agenda' ? addDays(a, dir * 30) : addDays(a, dir * 7)))
   }
@@ -180,6 +192,7 @@ export default function CalendarPage() {
           suggestions={suggestions}
           onSuggestion={onSuggestion}
           onDeadlineClick={openDeadline}
+          onGoogleChange={reload}
         />
       </div>
 

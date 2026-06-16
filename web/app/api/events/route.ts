@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth'
 import { EVENT_TYPES, type EventType } from '@/lib/calendar'
+import { pushCreate } from '@/lib/google-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +40,13 @@ export async function POST(request: NextRequest) {
       notes: typeof notes === 'string' && notes.trim() ? notes.trim() : null,
     },
   })
+
+  // Mirror to Google if connected (non-fatal — the local event is already saved).
+  try {
+    await pushCreate(auth.userId, event)
+  } catch (err) {
+    console.error('Google push (create) failed:', err)
+  }
 
   return NextResponse.json(
     {

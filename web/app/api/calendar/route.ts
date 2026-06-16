@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth'
 import { deriveDeadlines, deriveUpcoming, buildSuggestions, type CalEvent } from '@/lib/calendar'
+import { getValidAccessToken, pullAndReconcile } from '@/lib/google-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +17,16 @@ export async function GET(request: NextRequest) {
   const end = sp.get('end') ? new Date(sp.get('end') as string) : new Date(start.getTime() + 7 * 86_400_000)
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
     return NextResponse.json({ error: 'invalid start/end' }, { status: 400 })
+  }
+
+  // Two-way sync (pull): reconcile Google events for this range into local rows
+  // before reading, so Google-side changes show up. Non-fatal — if Google is
+  // unreachable or the user isn't connected, we just render local events.
+  try {
+    const token = await getValidAccessToken(auth.userId)
+    if (token) await pullAndReconcile(auth.userId, start, end, token)
+  } catch (e) {
+    console.error('Google pull failed (showing local events only):', e)
   }
 
   const [rows, tasks] = await Promise.all([
@@ -37,6 +48,7 @@ export async function GET(request: NextRequest) {
     allDay: e.allDay,
     type: e.type,
     notes: e.notes,
+    source: e.source,
   }))
 
   const taskLikes = tasks.map((t) => ({

@@ -1,17 +1,19 @@
 'use client'
-import { CalendarClock, Sparkles, Calendar as CalIcon, ChevronRight } from 'lucide-react'
+import { CalendarClock, Sparkles, ChevronRight } from 'lucide-react'
 import { Deadline, Suggestion } from '@/lib/calendar'
 import { relativeLabel } from '@/lib/smart-date'
 import { deadlineColor } from './shared'
+import { GoogleCalendarConnect } from './GoogleCalendarConnect'
 
 type Props = {
   upcoming: Deadline[]
   suggestions: Suggestion[]
   onSuggestion: (s: Suggestion) => void
   onDeadlineClick: (d: Deadline) => void
+  onGoogleChange?: () => void
 }
 
-export function ContextPanel({ upcoming, suggestions, onSuggestion, onDeadlineClick }: Props) {
+export function ContextPanel({ upcoming, suggestions, onSuggestion, onDeadlineClick, onGoogleChange }: Props) {
   return (
     <aside className="hidden xl:flex flex-col w-80 shrink-0 border-l border-border bg-surface2/40 p-5 gap-7 overflow-y-auto">
       <section>
@@ -58,10 +60,7 @@ export function ContextPanel({ upcoming, suggestions, onSuggestion, onDeadlineCl
       </section>
 
       <div className="mt-auto pt-4 border-t border-border">
-        <div className="flex items-center gap-2 text-[12px] text-text2">
-          <CalIcon size={13} strokeWidth={2} /> Connected to Google Calendar
-        </div>
-        <div className="text-[11px] text-text3 mt-1">Manage integration</div>
+        <GoogleCalendarConnect onChange={onGoogleChange} />
       </div>
     </aside>
   )
