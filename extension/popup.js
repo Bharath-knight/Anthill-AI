@@ -64,6 +64,27 @@ async function refreshTab() {
   })
 }
 
+async function getActiveTab() {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => resolve(tabs[0] || null))
+  })
+}
+
+// Grab the rendered, post-JS (and post-login) text of the active tab so the server can
+// classify/parse pages it can't fetch itself. Requires the "scripting" permission;
+// fails silently on restricted pages (chrome://, the web store) — server then falls back.
+async function getPageText(tabId) {
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => document.body?.innerText || '',
+    })
+    return (results?.[0]?.result || '').slice(0, 12000)
+  } catch {
+    return ''
+  }
+}
+
 async function init() {
   const stored = await getStored()
   $('api-url-input').value = normalizeApiUrl(stored.apiUrl || DEFAULT_API_URL) || DEFAULT_API_URL
@@ -138,11 +159,13 @@ $('capture-btn').addEventListener('click', async () => {
     return
   }
   const apiUrl = await getApiUrl()
-  const tabUrl = await refreshTab()
+  const tab = await getActiveTab()
+  const tabUrl = tab?.url || ''
   if (!tabUrl) {
     showAlert($('capture-status'), 'No active tab to capture.', 'error')
     return
   }
+  const pageText = tab.id != null ? await getPageText(tab.id) : ''
   $('capture-btn').disabled = true
   $('capture-btn').textContent = 'Saving...'
   hideAlert($('capture-status'))
@@ -153,7 +176,7 @@ $('capture-btn').addEventListener('click', async () => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${stored.anthillToken}`,
       },
-      body: JSON.stringify({ sourceUrl: tabUrl }),
+      body: JSON.stringify({ sourceUrl: tabUrl, pageText }),
     })
     if (res.status === 401) {
       await clearAuthStored()
