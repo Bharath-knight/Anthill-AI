@@ -7,10 +7,10 @@
 // regardless of their timezone, without changing how dates are stored.
 
 export type Urgency = 'overdue' | 'today' | 'upcoming' | 'none'
-export type TaskView = 'today' | 'next7' | 'upcoming' | 'nodate' | 'completed'
+export type TaskView = 'all' | 'today' | 'next7' | 'upcoming' | 'nodate' | 'completed'
 
-export const TASK_VIEWS: TaskView[] = ['today', 'next7', 'upcoming', 'nodate', 'completed']
-export const DEFAULT_VIEW: TaskView = 'today'
+export const TASK_VIEWS: TaskView[] = ['all', 'today', 'next7', 'upcoming', 'nodate', 'completed']
+export const DEFAULT_VIEW: TaskView = 'all'
 
 type TaskLike = { completed: boolean; deadline: string | null }
 
@@ -69,11 +69,12 @@ function matchesBucket(task: TaskLike, view: TaskView): boolean {
 
 export function pendingForView<T extends TaskLike>(tasks: T[], view: TaskView): T[] {
   if (view === 'completed') return []
+  if (view === 'all') return tasks.filter((t) => !t.completed)
   return tasks.filter((t) => !t.completed && matchesBucket(t, view))
 }
 
 export function completedForView<T extends TaskLike>(tasks: T[], view: TaskView): T[] {
-  if (view === 'completed') return tasks.filter((t) => t.completed)
+  if (view === 'completed' || view === 'all') return tasks.filter((t) => t.completed)
   return tasks.filter((t) => t.completed && matchesBucket(t, view))
 }
 

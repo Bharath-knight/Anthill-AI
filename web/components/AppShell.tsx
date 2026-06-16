@@ -4,13 +4,14 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   Search, Plus, Sun, CalendarDays, Calendar, Inbox, CheckCircle2,
-  Layers, Briefcase, FileText, Settings, LogOut, LogIn, PanelLeft,
+  Layers, Briefcase, FileText, Settings, LogOut, LogIn, PanelLeft, ListTodo,
 } from 'lucide-react'
 import { SettingsModal } from './SettingsModal'
 import type { TaskView } from '@/lib/smart-date'
-import { setTaskView, useTaskView } from '@/lib/task-view'
+import { setTaskView, useTaskView, requestNewTask } from '@/lib/task-view'
 
 const SMART_LISTS: { view: TaskView; label: string; Icon: typeof Sun }[] = [
+  { view: 'all', label: 'All', Icon: ListTodo },
   { view: 'today', label: 'Today', Icon: Sun },
   { view: 'next7', label: 'Next 7 Days', Icon: CalendarDays },
   { view: 'upcoming', label: 'Upcoming', Icon: Calendar },
@@ -154,7 +155,12 @@ export function AppShell({ children, fullBleed = false }: { children: React.Reac
         <SectionHeading>Tasks</SectionHeading>
         <nav className="px-2 flex flex-col gap-0.5">
           <button
-            onClick={() => goToView('today')}
+            onClick={() => {
+              if (currentView === 'completed') setTaskView('all')
+              if (!onTasks) router.push('/tasks')
+              requestNewTask()
+              setMobileOpen(false)
+            }}
             className={`${itemBase} w-full text-left text-accent hover:bg-accent-soft font-medium`}
             title="New task"
           >

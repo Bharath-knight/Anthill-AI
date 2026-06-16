@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ChevronRight, ChevronDown, Sun, CalendarDays, Calendar, Inbox, CheckCircle2 } from 'lucide-react'
+import { Plus, ChevronRight, ChevronDown, Sun, CalendarDays, Calendar, Inbox, CheckCircle2, ListTodo } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { TaskRow, type Task } from '@/components/TaskRow'
 import { TaskDetailPane } from '@/components/TaskDetailPane'
@@ -12,11 +12,12 @@ import {
   pendingForView, completedForView, seedDeadlineForView,
   type TaskView,
 } from '@/lib/smart-date'
-import { useTaskView } from '@/lib/task-view'
+import { useTaskView, consumeFocusRequest, onNewTaskRequest } from '@/lib/task-view'
 
 type Job = { id: string; company: string; role: string }
 
 const VIEW_META: Record<TaskView, { label: string; Icon: typeof Sun; empty: string }> = {
+  all:       { label: 'All',         Icon: ListTodo,    empty: 'No tasks yet. Add one above to get started.' },
   today:     { label: 'Today',       Icon: Sun,         empty: 'Nothing due today. Add a task to get going.' },
   next7:     { label: 'Next 7 Days', Icon: CalendarDays, empty: 'No tasks due in the next 7 days.' },
   upcoming:  { label: 'Upcoming',    Icon: Calendar,    empty: 'No upcoming tasks scheduled.' },
@@ -54,6 +55,14 @@ export default function TasksPage() {
       })
       .finally(() => setLoading(false))
   }, [router])
+
+  // "+New task" (sidebar) asks this page to focus the quick-add input.
+  useEffect(() => {
+    const focus = () => requestAnimationFrame(() => addRef.current?.focus())
+    const unsub = onNewTaskRequest(focus)
+    if (consumeFocusRequest()) focus()
+    return unsub
+  }, [])
 
   async function addTask() {
     const t = title.trim()
@@ -145,6 +154,13 @@ export default function TasksPage() {
                 ))}
               </select>
             )}
+            <button
+              onClick={addTask}
+              disabled={!title.trim()}
+              className="shrink-0 text-sm font-medium px-3 py-1 rounded bg-accent text-bg hover:opacity-90 disabled:bg-surface3 disabled:text-text3 transition-opacity"
+            >
+              Add
+            </button>
           </div>
         )}
 

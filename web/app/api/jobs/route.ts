@@ -46,6 +46,14 @@ export async function POST(request: NextRequest) {
         status: status || 'SAVED',
       },
     })
+    // Every job gets a linked task (mirrors the capture flow).
+    await prisma.task.create({
+      data: {
+        userId: auth.userId,
+        title: `Review & apply to ${job.role} at ${job.company}`,
+        linkedJobId: job.id,
+      },
+    })
     return NextResponse.json(job, { status: 201 })
   } catch (err: any) {
     if (err?.code === 'P2002') {
