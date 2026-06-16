@@ -12,6 +12,7 @@ import {
   pendingForView, completedForView, seedDeadlineForView,
   type TaskView,
 } from '@/lib/smart-date'
+import { useTaskView } from '@/lib/task-view'
 
 type Job = { id: string; company: string; role: string }
 
@@ -22,7 +23,6 @@ const VIEW_META: Record<TaskView, { label: string; Icon: typeof Sun; empty: stri
   nodate:    { label: 'No date',     Icon: Inbox,       empty: 'No undated tasks. This is your inbox.' },
   completed: { label: 'Completed',   Icon: CheckCircle2, empty: 'No completed tasks yet.' },
 }
-const VIEWS: TaskView[] = ['today', 'next7', 'upcoming', 'nodate', 'completed']
 
 export default function TasksPage() {
   const router = useRouter()
@@ -31,7 +31,7 @@ export default function TasksPage() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [title, setTitle] = useState('')
   const [jobId, setJobId] = useState('')
-  const [view, setView] = useState<TaskView>('today')
+  const view = useTaskView()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [completedOpen, setCompletedOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -54,17 +54,6 @@ export default function TasksPage() {
       })
       .finally(() => setLoading(false))
   }, [router])
-
-  // Active smart list is carried in the URL hash (set by the sidebar).
-  useEffect(() => {
-    const read = () => {
-      const h = window.location.hash.slice(1)
-      setView(VIEWS.includes(h as TaskView) ? (h as TaskView) : 'today')
-    }
-    read()
-    window.addEventListener('hashchange', read)
-    return () => window.removeEventListener('hashchange', read)
-  }, [])
 
   async function addTask() {
     const t = title.trim()
