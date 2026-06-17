@@ -11,7 +11,9 @@ export default function CompletePage() {
     const hash = window.location.hash.replace(/^#/, '')
     const token = new URLSearchParams(hash).get('t')
     if (!token) {
-      router.replace('/login?error=google')
+      // No token in the URL (e.g. manual navigation): if already signed in, just
+      // continue; otherwise send back to login.
+      router.replace(localStorage.getItem('anthill_token') ? '/jobs' : '/login?error=google')
       return
     }
     localStorage.setItem('anthill_token', token)
