@@ -49,7 +49,9 @@ export function buildSignInUrl(state: string, redirectUri: string): string {
     scope: SIGNIN_SCOPES,
     access_type: 'online', // identity only — no refresh token needed
     prompt: 'select_account',
-    include_granted_scopes: 'true',
+    // Intentionally NOT include_granted_scopes: keep sign-in strictly identity so a
+    // returning calendar user's sign-in never re-requests the sensitive calendar
+    // scope (which would trigger the unverified-app warning / .edu org block).
     state,
   })
   return `${AUTH_URL}?${p.toString()}`
