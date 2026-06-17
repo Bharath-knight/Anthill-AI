@@ -10,7 +10,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
     const user = await prisma.user.findUnique({ where: { email } })
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    // user.password is null for Google-only accounts — reject password login for them.
+    if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
     const token = await signToken(user.id)

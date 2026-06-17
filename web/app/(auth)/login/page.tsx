@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { TextInput, FieldLabel } from '@/components/Input'
 import { Button } from '@/components/Button'
+import { GoogleButton } from '@/components/GoogleButton'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -11,6 +12,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Surface errors bounced back from the Google sign-in callback (?error=...).
+  useEffect(() => {
+    const err = new URLSearchParams(window.location.search).get('error')
+    if (!err) return
+    const messages: Record<string, string> = {
+      google_unconfigured: 'Google sign-in isn’t available right now.',
+      google_denied: 'Google sign-in was cancelled.',
+      google_unverified: 'Your Google account needs a verified email to sign in.',
+      google: 'Google sign-in failed. Please try again.',
+    }
+    setError(messages[err] ?? 'Sign-in failed. Please try again.')
+    window.history.replaceState(null, '', '/login')
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -70,6 +85,13 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>
+
+        <div className="my-5 flex items-center gap-3">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-[11px] uppercase tracking-wide text-text3">or</span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleButton />
 
         <p className="mt-6 text-sm text-center text-text3">
           No account?{' '}

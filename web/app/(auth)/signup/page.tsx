@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { TextInput, FieldLabel } from '@/components/Input'
 import { Button } from '@/components/Button'
+import { GoogleButton } from '@/components/GoogleButton'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -81,6 +82,13 @@ export default function SignupPage() {
             {loading ? 'Creating account...' : 'Create account'}
           </Button>
         </form>
+
+        <div className="my-5 flex items-center gap-3">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-[11px] uppercase tracking-wide text-text3">or</span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleButton label="Sign up with Google" />
 
         <p className="mt-6 text-sm text-center text-text3">
           Have an account?{' '}
