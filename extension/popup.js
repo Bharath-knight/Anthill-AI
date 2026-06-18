@@ -6,11 +6,6 @@ const captureSection = $('capture-section')
 const userInfo = $('user-info')
 const userEmailEl = $('user-email')
 
-function normalizeApiUrl(value) {
-  if (!value) return ''
-  try { return new URL(value.trim()).origin } catch { return '' }
-}
-
 function show(section) {
   loginSection.classList.toggle('active', section === 'login')
   captureSection.classList.toggle('active', section === 'capture')
@@ -28,7 +23,7 @@ function hideAlert(el) {
 
 async function getStored() {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['apiUrl', 'anthillToken', 'anthillUser'], resolve)
+    chrome.storage.local.get(['anthillToken', 'anthillUser'], resolve)
   })
 }
 
@@ -40,11 +35,6 @@ function clearAuthStored() {
   return new Promise((resolve) =>
     chrome.storage.local.remove(['anthillToken', 'anthillUser'], resolve)
   )
-}
-
-async function getApiUrl() {
-  const stored = await getStored()
-  return normalizeApiUrl(stored.apiUrl || DEFAULT_API_URL) || DEFAULT_API_URL
 }
 
 function setSignedIn(user) {
@@ -87,7 +77,6 @@ async function getPageText(tabId) {
 
 async function init() {
   const stored = await getStored()
-  $('api-url-input').value = normalizeApiUrl(stored.apiUrl || DEFAULT_API_URL) || DEFAULT_API_URL
 
   const tabUrl = await refreshTab()
   $('url-display').textContent = tabUrl || '(no active tab)'
@@ -99,19 +88,14 @@ async function init() {
   }
 }
 
-$('save-url-btn').addEventListener('click', async () => {
-  const val = normalizeApiUrl($('api-url-input').value)
-  if (!val) return
-  await setStored({ apiUrl: val })
-  $('api-url-input').value = val
-  $('save-url-btn').textContent = 'Saved'
-  setTimeout(() => { $('save-url-btn').textContent = 'Save' }, 1500)
+$('open-web').addEventListener('click', (e) => {
+  e.preventDefault()
+  chrome.tabs.create({ url: DEFAULT_API_URL })
 })
 
-$('open-signup').addEventListener('click', async (e) => {
+$('open-signup').addEventListener('click', (e) => {
   e.preventDefault()
-  const apiUrl = await getApiUrl()
-  chrome.tabs.create({ url: `${apiUrl}/signup` })
+  chrome.tabs.create({ url: `${DEFAULT_API_URL}/signup` })
 })
 
 $('login-btn').addEventListener('click', async () => {
@@ -121,7 +105,7 @@ $('login-btn').addEventListener('click', async () => {
     showAlert($('login-status'), 'Email and password required.', 'error')
     return
   }
-  const apiUrl = await getApiUrl()
+  const apiUrl = DEFAULT_API_URL
   $('login-btn').disabled = true
   $('login-btn').textContent = 'Signing in...'
   hideAlert($('login-status'))
@@ -158,7 +142,7 @@ $('capture-btn').addEventListener('click', async () => {
     setSignedOut()
     return
   }
-  const apiUrl = await getApiUrl()
+  const apiUrl = DEFAULT_API_URL
   const tab = await getActiveTab()
   const tabUrl = tab?.url || ''
   if (!tabUrl) {

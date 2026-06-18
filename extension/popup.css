@@ -149,8 +149,6 @@ input::placeholder { color: var(--text3); }
   border-top: 1px solid var(--border);
   background: var(--bg);
 }
-.api-url-row { display: flex; gap: 6px; }
-.api-url-row input { font-size: 11px; padding: 6px 8px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
 
 /* Utilities */
 .muted { color: var(--text2); }
