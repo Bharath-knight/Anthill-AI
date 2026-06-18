@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Anthill",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Capture jobs from any page into your Anthill account.",
   "permissions": ["activeTab", "storage", "scripting"],
   "host_permissions": [
