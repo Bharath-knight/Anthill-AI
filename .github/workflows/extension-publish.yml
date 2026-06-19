@@ -1,0 +1,55 @@
+name: Publish extension to Chrome Web Store
+
+# Triggered by pushing a version tag, e.g.:
+#   git tag v1.0.6 && git push origin v1.0.6
+#
+# Packages the extension/ folder and uploads it to the Chrome Web Store as a
+# DRAFT (publish: false). It is NOT submitted for review — you click "Publish"
+# in the Chrome Web Store dashboard when you're ready. This keeps the final
+# gate manual on purpose.
+#
+# One-time setup — add these repo secrets
+# (Settings -> Secrets and variables -> Actions -> New repository secret):
+#   CWS_CLIENT_ID
+#   CWS_CLIENT_SECRET
+#   CWS_REFRESH_TOKEN
+# See docs/extension-publishing.md for how to generate them.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches manifest version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          MANIFEST="$(node -p "require('./extension/manifest.json').version")"
+          echo "Tag version: $TAG  |  Manifest version: $MANIFEST"
+          if [ "$TAG" != "$MANIFEST" ]; then
+            echo "::error::Tag v$TAG does not match extension/manifest.json version $MANIFEST. Bump the manifest or retag."
+            exit 1
+          fi
+
+      - name: Package extension
+        run: |
+          cd extension
+          zip -r ../extension.zip . -x '*.DS_Store' '*/.*'
+          cd ..
+          echo "Packaged contents:"
+          unzip -l extension.zip
+
+      - name: Upload to Chrome Web Store (draft — not published)
+        uses: mnao305/chrome-extension-upload@v6.0.0
+        with:
+          file-path: extension.zip
+          extension-id: icnlhamakppnmmplljlhjacmjeaidfhl
+          client-id: ${{ secrets.CWS_CLIENT_ID }}
+          client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
+          publish: false
