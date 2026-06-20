@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth'
+import { htmlToText, isBlockedHost, hasJobPostingSchema, urlLooksLikeJob } from '@/lib/capture-utils'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -10,37 +11,6 @@ const CORS = {
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS })
-}
-
-function htmlToText(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&#?\w+;/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-// Basic SSRF guard: block obvious local/private targets before the server fetches a
-// user-supplied URL. Checks the literal hostname only (no DNS resolution) — accepted MVP risk.
-function isBlockedHost(hostname: string): boolean {
-  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '')
-  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local')) return true
-  if (h === '::1' || h === '::') return true
-  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
-  if (m) {
-    const a = Number(m[1]), b = Number(m[2])
-    if (a === 0 || a === 10 || a === 127) return true
-    if (a === 169 && b === 254) return true
-    if (a === 172 && b >= 16 && b <= 31) return true
-    if (a === 192 && b === 168) return true
-  }
-  return false
 }
 
 type JobFields = { company: string | null; role: string | null; location: string | null; deadline: string | null }
@@ -112,56 +82,6 @@ ${text}
     location: cleanField(parsed.location),
     deadline: cleanField(parsed.deadline),
   }
-}
-
-// --- Layer 1 job detection: deterministic signals, no classifier LLM call ----
-// A capture is a job when EITHER the page embeds schema.org JobPosting structured
-// data OR the URL matches a known ATS/job-board host or a job-like path. Anything
-// else is research. The LLM is used only to extract fields once we've decided job.
-
-function jsonLdHasJobPosting(node: unknown): boolean {
-  if (Array.isArray(node)) return node.some(jsonLdHasJobPosting)
-  if (node && typeof node === 'object') {
-    const obj = node as Record<string, unknown>
-    const t = obj['@type']
-    if (t === 'JobPosting' || (Array.isArray(t) && t.includes('JobPosting'))) return true
-    if (jsonLdHasJobPosting(obj['@graph'])) return true
-  }
-  return false
-}
-
-// Job pages embed <script type="application/ld+json">{"@type":"JobPosting",...}</script>
-// for Google Jobs — present in the server-rendered HTML even on JS-heavy sites.
-function hasJobPostingSchema(html: string): boolean {
-  const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
-  let m: RegExpExecArray | null
-  while ((m = re.exec(html)) !== null) {
-    const block = m[1].trim()
-    try {
-      if (jsonLdHasJobPosting(JSON.parse(block))) return true
-    } catch {
-      // Malformed/concatenated JSON-LD: cheap substring check as a fallback.
-      if (/"@type"\s*:\s*("JobPosting"|\[[^\]]*"JobPosting")/.test(block)) return true
-    }
-  }
-  return false
-}
-
-// Dedicated ATS / job-board hosts — everything served here is a job posting.
-const JOB_HOST_SUFFIXES = [
-  'greenhouse.io', 'lever.co', 'ashbyhq.com', 'myworkdayjobs.com',
-  'smartrecruiters.com', 'icims.com', 'workable.com', 'jobvite.com',
-  'breezy.hr', 'recruitee.com', 'teamtailor.com',
-]
-
-// Job-like path segments — catches mixed hosts (LinkedIn, Indeed, Glassdoor) and
-// company career pages on custom domains (careers.acme.com/...).
-const JOB_PATH_RE = /\/(jobs?|careers?|positions?|vacanc(?:y|ies)|openings?|viewjob|requisition)(?:[/_?#-]|$)/i
-
-function urlLooksLikeJob(url: URL): boolean {
-  const host = url.hostname.toLowerCase()
-  if (JOB_HOST_SUFFIXES.some((s) => host === s || host.endsWith('.' + s))) return true
-  return JOB_PATH_RE.test(url.pathname)
 }
 
 // --- Layer 2: LLM classification for the ambiguous middle --------------------
