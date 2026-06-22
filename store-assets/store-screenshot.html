@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Anthill — store screenshot 1280×800</title>
+<!-- DEV ASSET: rendered to store-assets/screenshot-1280x800.png via Edge headless. Not shipped. -->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 800px; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    background: #0e0f13;
+    color: #16161b;
+  }
+
+  /* ---- left value panel ---- */
+  .left {
+    width: 512px; height: 800px; flex: 0 0 512px;
+    padding: 72px 56px;
+    display: flex; flex-direction: column; justify-content: center; gap: 22px;
+    background:
+      radial-gradient(700px 380px at 20% 0%, rgba(184,230,46,0.18), transparent),
+      linear-gradient(160deg, #14161b, #0e0f13);
+    color: #ececf1;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 6px; }
+  .brand .mark { width: 34px; height: 34px; border-radius: 9px; background: #b8e62e; color: #0e0e11;
+    display: grid; place-items: center; font-weight: 800; font-size: 20px; }
+  .brand .name { font-weight: 700; font-size: 22px; letter-spacing: -0.4px; }
+  h1 { font-size: 52px; line-height: 1.05; letter-spacing: -1.6px; font-weight: 700; }
+  h1 .accent { color: #b8e62e; }
+  .sub { font-size: 18px; line-height: 1.55; color: #aab; max-width: 30ch; }
+  .bullets { display: flex; flex-direction: column; gap: 13px; margin-top: 8px; }
+  .bullet { display: flex; align-items: center; gap: 11px; font-size: 15.5px; color: #d7dae3; }
+  .bullet .dot { width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto;
+    background: rgba(184,230,46,0.16); color: #b8e62e; display: grid; place-items: center; }
+  .bullet .dot svg { width: 12px; height: 12px; }
+
+  /* ---- right: faux browser window with the real card ---- */
+  .right { flex: 1; height: 800px; position: relative;
+    background: radial-gradient(900px 600px at 70% 30%, #20242e, #0e0f13);
+    display: grid; place-items: center; }
+  .window {
+    position: relative;
+    width: 660px; height: 470px;
+    background: #fbfbfc; border-radius: 16px; overflow: hidden;
+    box-shadow: 0 40px 90px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .titlebar { height: 42px; background: #eef0f3; border-bottom: 1px solid rgba(0,0,0,0.06);
+    display: flex; align-items: center; gap: 8px; padding: 0 14px; }
+  .tl { width: 11px; height: 11px; border-radius: 50%; }
+  .tl.r { background: #ff5f57; } .tl.y { background: #febc2e; } .tl.g { background: #28c840; }
+  .urlpill { margin-left: 14px; height: 24px; flex: 1; max-width: 360px; background: #fff;
+    border: 1px solid rgba(0,0,0,0.08); border-radius: 7px; display: flex; align-items: center;
+    padding: 0 10px; font-size: 12px; color: #8a8a94; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .page { padding: 26px 30px; }
+  .page .h { height: 18px; width: 62%; border-radius: 6px; background: #e7e8ec; margin-bottom: 18px; }
+  .page .ln { height: 11px; border-radius: 5px; background: #eef0f3; margin: 9px 0; }
+  .page .ln.w90 { width: 90%; } .page .ln.w80 { width: 80%; } .page .ln.w70 { width: 70%; } .page .ln.w50 { width: 50%; }
+
+  /* ===== EXACT card styles from extension/content.js (position overridden to sit in the window) ===== */
+  .card * { box-sizing: border-box; margin: 0; padding: 0; }
+  .card {
+    position: absolute; right: 20px; bottom: 20px; width: 344px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px; line-height: 1.45; color: #16161b; background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.07); border-radius: 16px; padding: 14px 14px 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 18px 44px rgba(0,0,0,0.22);
+  }
+  .close { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; display: grid;
+    place-items: center; border: none; background: transparent; border-radius: 6px; color: #9a9aa6; }
+  .close svg { width: 13px; height: 13px; }
+  .head { display: flex; align-items: flex-start; gap: 10px; padding-right: 22px; }
+  .mascot { flex: 0 0 auto; width: 40px; height: 40px; }
+  .mascot svg { width: 40px; height: 40px; display: block; }
+  .brand2 { min-width: 0; padding-top: 1px; }
+  .brand-row { display: flex; align-items: center; gap: 6px; }
+  .logo { width: 16px; height: 16px; border-radius: 4px; background: #b8e62e; color: #0e0e11;
+    display: grid; place-items: center; font-weight: 800; font-size: 10px; }
+  .brand-name { font-weight: 700; font-size: 13px; letter-spacing: -0.2px; }
+  .tagline { color: #6b6b76; font-size: 11.5px; margin-top: 1px; }
+  .preview { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 9px 10px;
+    background: #f6f6f8; border: 1px solid rgba(0,0,0,0.05); border-radius: 10px; }
+  .fav { flex: 0 0 auto; width: 18px; height: 18px; border-radius: 4px; overflow: hidden; background: #e6e6ea;
+    display: grid; place-items: center; }
+  .fav svg { width: 12px; height: 12px; }
+  .pmeta { min-width: 0; flex: 1; }
+  .ptitle { font-weight: 600; font-size: 12.5px; color: #16161b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .purl { font-size: 11px; color: #8a8a94; font-family: ui-monospace, Menlo, Consolas, monospace;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .summary { margin-top: 10px; color: #44454f; font-size: 12.5px; }
+  .actions { display: flex; gap: 8px; margin-top: 13px; }
+  .btn { flex: 1; padding: 9px 12px; border-radius: 9px; border: none; font-size: 12.5px; font-weight: 600; font-family: inherit; }
+  .btn.ghost { background: #f1f1f4; color: #44454f; flex: 0 0 auto; }
+  .btn.primary { background: #b8e62e; color: #0e0e11; }
+</style>
+</head>
+<body>
+  <div class="left">
+    <div class="brand"><span class="mark">A</span><span class="name">Anthill</span></div>
+    <h1>Copy a link.<br>Anthill <span class="accent">files it</span> for you.</h1>
+    <div class="sub">Copy any URL while you browse and Ant pops up to save it to your workspace — auto-sorted and summarized.</div>
+    <div class="bullets">
+      <div class="bullet"><span class="dot" id="d1"></span> Auto-classified &amp; summarized by AI</div>
+      <div class="bullet"><span class="dot" id="d2"></span> Works on every site you visit</div>
+      <div class="bullet"><span class="dot" id="d3"></span> Lightweight — never interrupts browsing</div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="window">
+      <div class="titlebar">
+        <span class="tl r"></span><span class="tl y"></span><span class="tl g"></span>
+        <span class="urlpill">linear.app/careers/senior-product-designer</span>
+      </div>
+      <div class="page">
+        <div class="h"></div>
+        <div class="ln w90"></div><div class="ln w80"></div><div class="ln w70"></div>
+        <div class="ln w90"></div><div class="ln w50"></div>
+      </div>
+
+      <div class="card">
+        <button class="close" id="x"></button>
+        <div class="head">
+          <div class="mascot" id="ant"></div>
+          <div class="brand2">
+            <div class="brand-row"><span class="logo">A</span><span class="brand-name">Anthill</span></div>
+            <div class="tagline">Want me to file this away?</div>
+          </div>
+        </div>
+        <div class="preview">
+          <div class="fav" id="fav"></div>
+          <div class="pmeta">
+            <div class="ptitle">Senior Product Designer — Linear</div>
+            <div class="purl">linear.app/careers/senior-product-designer</div>
+          </div>
+        </div>
+        <div class="summary">Linear is hiring a Senior Product Designer to shape its issue-tracking and project-planning experience for software teams.</div>
+        <div class="actions">
+          <button class="btn ghost">Dismiss</button>
+          <button class="btn primary">Add to Anthill</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const ANT_SVG = `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <g stroke="#2a2a33" stroke-width="2.4" stroke-linecap="round">
+      <path d="M30 34 L20 44"/><path d="M31 36 L24 49"/><path d="M34 35 L44 45"/><path d="M33 37 L40 50"/><path d="M22 30 L12 36"/><path d="M22 33 L14 42"/>
+    </g>
+    <ellipse cx="42" cy="34" rx="12" ry="10.5" fill="#2a2a33"/><circle cx="29" cy="32" r="7" fill="#2a2a33"/><circle cx="18" cy="28" r="8.5" fill="#2a2a33"/>
+    <g stroke="#2a2a33" stroke-width="2.2" stroke-linecap="round" fill="none"><path d="M14 22 C10 15 12 11 9 9"/><path d="M21 21 C19 13 22 10 21 7"/></g>
+    <circle cx="9" cy="8" r="2.3" fill="#b8e62e"/><circle cx="21" cy="6.5" r="2.3" fill="#b8e62e"/>
+    <circle cx="16" cy="27" r="2" fill="#fff"/><circle cx="21" cy="28" r="2" fill="#fff"/><circle cx="16.4" cy="27.4" r="1" fill="#16161b"/><circle cx="21.4" cy="28.4" r="1" fill="#16161b"/>
+    <path d="M51 24 C58 22 60 28 56 33 C52 31 50 28 51 24 Z" fill="#b8e62e"/><path d="M53 25 C54 28 55 30 56 32" stroke="#0e0e11" stroke-width="1.2" stroke-linecap="round"/>
+  </svg>`;
+  const CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13 l4 4 L19 6"/></svg>`;
+  const CLOSE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 5 L19 19 M19 5 L5 19"/></svg>`;
+  const GLOBE = `<svg viewBox="0 0 24 24" fill="none" stroke="#8a8a94" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14 0 18M12 3c-3 3.5-3 14 0 18"/></svg>`;
+  document.getElementById('ant').innerHTML = ANT_SVG;
+  document.getElementById('x').innerHTML = CLOSE;
+  document.getElementById('fav').innerHTML = GLOBE;
+  ['d1','d2','d3'].forEach(id => document.getElementById(id).innerHTML = CHECK);
+</script>
+</body>
+</html>
