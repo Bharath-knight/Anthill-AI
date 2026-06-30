@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { X, Trash2, Calendar } from 'lucide-react'
+import { X, Trash2, Calendar, ExternalLink } from 'lucide-react'
 import { TaskCheckbox } from './TaskRow'
 import type { Task } from './TaskRow'
 import { relativeLabel, toDateInputValue } from '@/lib/smart-date'
@@ -176,6 +176,14 @@ export function TaskDetailPane({
                   <span className="inline-flex items-center rounded-full bg-surface3 px-2.5 py-1 text-xs text-text2">
                     {shown.linkedJob.company} — {shown.linkedJob.role}
                   </span>
+                  <a
+                    href={shown.linkedJob.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1.5 rounded border border-border bg-surface2 px-2.5 py-1.5 text-xs font-medium text-accent hover:bg-surface3 transition-colors"
+                  >
+                    Apply <ExternalLink size={12} strokeWidth={2.25} />
+                  </a>
                 </div>
               )}
             </div>
