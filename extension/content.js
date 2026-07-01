@@ -17,6 +17,9 @@
   const HANDLED_KEY = 'anthillHandledUrls'
   const HANDLED_CAP = 500
   const AUTO_DISMISS_MS = 12000
+  const WEB_TOKEN_KEY = 'anthill_token'
+  const WEB_USER_KEY = 'anthill_user'
+  const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30
 
   const URL_RE = /\bhttps?:\/\/[^\s<>"'`)\[\]]+/i
   // Trailing punctuation that commonly rides along with a copied URL.
@@ -25,6 +28,110 @@
   let currentHost = null // the live popup host element, or null when none is shown
   let autoTimer = null
   let dismissing = false // true during a card's exit animation, so no second card slips in
+
+  // Anthill's own web app can push auth changes into the extension through a
+  // page -> content-script message. This keeps web login/logout in sync with the
+  // popup without exposing a public background API to arbitrary sites.
+  const TRUSTED_ORIGIN =
+    location.origin === API_URL || location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+
+  if (TRUSTED_ORIGIN) {
+    function readCookie(name) {
+      const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
+      return match ? decodeURIComponent(match[1]) : null
+    }
+
+    function getPageToken() {
+      return localStorage.getItem(WEB_TOKEN_KEY) || readCookie(WEB_TOKEN_KEY)
+    }
+
+    function getPageUser() {
+      const raw = localStorage.getItem(WEB_USER_KEY)
+      if (!raw) return null
+      try {
+        const user = JSON.parse(raw)
+        return user && typeof user.email === 'string' ? user : null
+      } catch {
+        return null
+      }
+    }
+
+    function writePageSession(token, user) {
+      const secure = location.protocol === 'https:' ? '; Secure' : ''
+      localStorage.setItem(WEB_TOKEN_KEY, token)
+      localStorage.setItem(WEB_USER_KEY, JSON.stringify(user))
+      document.cookie = `${WEB_TOKEN_KEY}=${encodeURIComponent(token)}; Path=/; Max-Age=${THIRTY_DAYS_SECONDS}; SameSite=Lax${secure}`
+    }
+
+    function clearPageSession() {
+      localStorage.removeItem(WEB_TOKEN_KEY)
+      localStorage.removeItem(WEB_USER_KEY)
+      document.cookie = `${WEB_TOKEN_KEY}=; Path=/; Max-Age=0; SameSite=Lax`
+    }
+
+    function writeExtensionSession(token, user) {
+      try {
+        chrome.storage.local.set({ anthillToken: token, anthillUser: user }, () => {
+          chrome.storage.local.remove(['anthillSignedOutAt'])
+        })
+      } catch {}
+    }
+
+    function clearExtensionSession() {
+      try {
+        chrome.storage.local.remove(['anthillToken', 'anthillUser'], () => {
+          chrome.storage.local.set({ anthillSignedOutAt: Date.now() })
+        })
+      } catch {}
+    }
+
+    try {
+      chrome.storage.local.get(['anthillToken', 'anthillUser', 'anthillSignedOutAt'], (stored) => {
+        const storedToken = typeof stored?.anthillToken === 'string' && stored.anthillToken ? stored.anthillToken : null
+        const storedUser = stored?.anthillUser && typeof stored.anthillUser.email === 'string' ? stored.anthillUser : null
+        if (storedToken && storedUser) {
+          writePageSession(storedToken, storedUser)
+          return
+        }
+        if (stored?.anthillSignedOutAt) {
+          clearPageSession()
+          return
+        }
+        const pageToken = getPageToken()
+        const pageUser = getPageUser()
+        if (pageToken && pageUser) writeExtensionSession(pageToken, pageUser)
+      })
+    } catch {}
+
+    window.addEventListener('message', (event) => {
+      if (event.source !== window) return
+      const msg = event.data
+      if (!msg || msg.source !== 'anthill-web' || msg.type !== 'ANTHILL_AUTH_SYNC') return
+
+      const token = typeof msg.token === 'string' && msg.token ? msg.token : null
+      const user = msg.user && typeof msg.user.email === 'string' ? msg.user : null
+
+      if (token && user) {
+        writeExtensionSession(token, user)
+      } else {
+        clearExtensionSession()
+      }
+    })
+
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (!msg || msg.type !== 'ANTHILL_EXTENSION_AUTH_SYNC') return false
+
+      const token = typeof msg.token === 'string' && msg.token ? msg.token : null
+      const user = msg.user && typeof msg.user.email === 'string' ? msg.user : null
+
+      if (token && user) {
+        writePageSession(token, user)
+      } else {
+        clearPageSession()
+      }
+      return false
+    })
+  }
 
   // --- helpers ---------------------------------------------------------------
 

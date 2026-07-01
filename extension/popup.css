@@ -156,6 +156,8 @@ input::placeholder { color: var(--text3); }
 .center { text-align: center; }
 .mb-4 { margin-bottom: 4px; }
 .mb-12 { margin-bottom: 12px; }
+.mt-8 { margin-top: 8px; }
 .mt-12 { margin-top: 12px; }
+.sep { color: var(--text3); margin: 0 4px; }
 .link { color: var(--accent); text-decoration: none; }
 .link:hover { text-decoration: underline; }

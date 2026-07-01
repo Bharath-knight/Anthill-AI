@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const tasks = await prisma.task.findMany({
     where: { userId: auth.userId },
     orderBy: { createdAt: 'desc' },
-    include: { linkedJob: { select: { id: true, company: true, role: true } } },
+    include: { linkedJob: { select: { id: true, company: true, role: true, link: true } } },
   })
   return NextResponse.json(tasks)
 }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       deadline: deadline ? new Date(deadline) : null,
       linkedJobId: linkedJobId || null,
     },
-    include: { linkedJob: { select: { id: true, company: true, role: true } } },
+    include: { linkedJob: { select: { id: true, company: true, role: true, link: true } } },
   })
   return NextResponse.json(task, { status: 201 })
 }

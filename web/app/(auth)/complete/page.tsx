@@ -1,31 +1,43 @@
 'use client'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { getToken, persistSession } from '@/lib/client-auth'
 
 // Receives the JWT from the Google sign-in callback via the URL fragment,
-// moves it into localStorage (matching the email/password flow), then routes on.
+// moves it into durable client storage, then routes on.
 export default function CompletePage() {
   const router = useRouter()
 
   useEffect(() => {
     const hash = window.location.hash.replace(/^#/, '')
-    const token = new URLSearchParams(hash).get('t')
+    const params = new URLSearchParams(hash)
+    const token = params.get('t')
+    const setupPassword = params.get('setupPassword') === '1'
     if (!token) {
       // No token in the URL (e.g. manual navigation): if already signed in, just
       // continue; otherwise send back to login.
-      router.replace(localStorage.getItem('anthill_token') ? '/jobs' : '/login?error=google')
+      router.replace(getToken() ? '/jobs' : '/login?error=google')
       return
     }
-    localStorage.setItem('anthill_token', token)
+    const authToken = token
     window.history.replaceState(null, '', '/complete') // strip the token from the URL
 
-    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((user) => {
-        if (user && user.id) localStorage.setItem('anthill_user', JSON.stringify(user))
-      })
-      .catch(() => {})
-      .finally(() => router.replace('/jobs'))
+    async function finishGoogleSignIn() {
+      try {
+        const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${authToken}` } })
+        if (!res.ok) {
+          router.replace('/login?error=google')
+          return
+        }
+        const user = await res.json()
+        persistSession(authToken, user)
+        router.replace(setupPassword || user.hasPassword === false ? '/jobs?setupPassword=1' : '/jobs')
+      } catch {
+        router.replace('/login?error=google')
+      }
+    }
+
+    finishGoogleSignIn()
   }, [router])
 
   return (

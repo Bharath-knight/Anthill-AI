@@ -1,5 +1,5 @@
 'use client'
-import { Check, X } from 'lucide-react'
+import { Check, ExternalLink, X } from 'lucide-react'
 import { urgency, relativeLabel, type Urgency } from '@/lib/smart-date'
 
 export type Task = {
@@ -9,7 +9,7 @@ export type Task = {
   completed: boolean
   deadline: string | null
   linkedJobId: string | null
-  linkedJob: { id: string; company: string; role: string } | null
+  linkedJob: { id: string; company: string; role: string; link: string } | null
 }
 
 // Ring color is derived purely from deadline urgency (Anthill has no priority field).
@@ -108,6 +108,17 @@ export function TaskRow({
           <p className="text-[11px] text-text3 truncate mt-0.5">
             {task.linkedJob.company} — {task.linkedJob.role}
           </p>
+        )}
+        {task.linkedJob && (
+          <a
+            href={task.linkedJob.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:opacity-80"
+          >
+            Apply <ExternalLink size={10} strokeWidth={2.25} />
+          </a>
         )}
       </div>
 

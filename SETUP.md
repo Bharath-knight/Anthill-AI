@@ -1,123 +1,160 @@
-# Anthill — Setup Guide
+# Anthill Setup Guide
+
+For full developer handoff, secrets policy, and owner/new-developer checklists,
+start with [docs/developer-onboarding.md](docs/developer-onboarding.md).
 
 ## Prerequisites
+
 - Node.js 18+
-- A Supabase account (free): https://supabase.com
-- A Vercel account (free): https://vercel.com
+- Git
+- A Supabase project for the database
+- Optional: Google Cloud OAuth credentials for Google Sign-In and Calendar sync
+- Optional: Groq API key for better capture classification and previews
+- Optional locally, required in production: Resend API key for password reset emails
 
----
-
-## 1. Database (Supabase)
-
-1. Create a new Supabase project
-2. Go to **Settings → Database → Connection string**
-3. Copy both URLs:
-   - **Transaction mode** (port 6543) → `DATABASE_URL`
-   - **Session mode** (port 5432) → `DIRECT_URL`
-
----
-
-## 2. Web App Setup
+## 1. Web App Setup
 
 ```bash
 cd anthill/web
-
-# Install dependencies
 npm install
-
-# Create your env file
 cp .env.example .env.local
-# Edit .env.local and fill in DATABASE_URL, DIRECT_URL, and JWT_SECRET
-# Generate JWT_SECRET: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-# Push database schema
+Fill `web/.env.local`.
+
+Required:
+
+```env
+DATABASE_URL=
+DIRECT_URL=
+JWT_SECRET=
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+Optional:
+
+```env
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+GOOGLE_SIGNIN_REDIRECT_URI=
+GROQ_API_KEY=
+RESEND_API_KEY=
+PASSWORD_RESET_FROM=
+```
+
+Generate a local JWT secret with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+If you are using the shared development Supabase database, use the shared
+development `JWT_SECRET` from the project owner instead of generating your own.
+
+## 2. Database
+
+Anthill uses Prisma with PostgreSQL/Supabase.
+
+For Supabase:
+
+- Use the transaction/pooler URL for `DATABASE_URL`, usually port `6543`.
+- Use the session/direct URL for `DIRECT_URL`, usually port `5432`.
+
+Then run:
+
+```bash
+npm run db:generate
 npm run db:push
+```
 
-# Start dev server
+If you are working against a shared dev database, confirm with the owner before
+pushing schema changes.
+
+## 3. Start Local Development
+
+```bash
 npm run dev
 ```
 
-Visit http://localhost:3000 — you'll be redirected to `/jobs`. Sign up first.
+Open:
 
----
-
-## 3. Deploy to Vercel
-
-```bash
-# From anthill/web
-npx vercel
-
-# Set environment variables in Vercel dashboard:
-# DATABASE_URL, DIRECT_URL, JWT_SECRET, NEXT_PUBLIC_APP_URL
+```text
+http://localhost:3000
 ```
 
-Or connect your GitHub repo to Vercel for automatic deploys.
+Sign up with your own Anthill email/password account.
 
----
+## 4. Google OAuth Setup
 
-## 4. Chrome Extension
+Google is optional unless you need Google Sign-In or Google Calendar sync.
 
-1. Open Chrome → `chrome://extensions`
-2. Enable **Developer mode** (top right toggle)
-3. Click **Load unpacked**
-4. Select the `anthill/extension/` folder
-5. The Anthill icon appears in your toolbar
+Create or open a Google Cloud OAuth client of type `Web application` and add:
 
-**First-time setup in extension:**
-- Enter your API URL (e.g. `https://your-app.vercel.app` or `http://localhost:3000`)
-- Click **Save URL**
-- Sign in with your account
+```text
+http://localhost:3000/api/google/callback
+http://localhost:3000/api/auth/google/callback
+https://anthill-ai.vercel.app/api/google/callback
+https://anthill-ai.vercel.app/api/auth/google/callback
+```
 
----
+Then set:
 
-## 5. How to Use
+```env
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
 
-### Capture a job posting
-1. Go to any job posting (LinkedIn, Greenhouse, company site)
-2. Select and copy the job description text
-3. Click the Anthill extension icon
-4. Click **Capture Clipboard**
-5. Review the parsed fields — edit anything the parser got wrong
-6. Click **Save**
+The redirect override variables can usually stay blank.
 
-### Capture research
-1. Copy any text you want to save (company info, notes, etc.)
-2. Click Anthill → Capture Clipboard
-3. Switch to **Research** tab
-4. Source URL auto-fills from your active tab
-5. Click **Save**
+## 5. Password Reset Email
 
-### Create tasks
-- Go to the web app → Tasks tab
-- Click **+ New Task**
-- Optionally link it to a saved job
+Anthill uses Resend for classic password reset links.
 
-### Run matching
-- Go to web app → Research tab
-- Click **Run Matching**
-- Research items get matched to tasks by keyword overlap
-- Accept or reject each suggested match
+For production, set:
 
----
+```env
+RESEND_API_KEY=
+PASSWORD_RESET_FROM=Anthill <noreply@your-domain.com>
+```
 
-## API Quick Reference
+`PASSWORD_RESET_FROM` must be a verified sender or domain in Resend. In local
+development, if these values are blank, the forgot-password page returns a local
+reset link so the flow can still be tested without sending email.
+
+## 6. Chrome Extension
+
+The extension lives in `extension/` and currently talks to production:
+
+```text
+https://anthill-ai.vercel.app
+```
+
+To load it manually:
+
+1. Open `chrome://extensions`.
+2. Enable Developer mode.
+3. Click Load unpacked.
+4. Select the repo's `extension/` folder.
+5. Sign in with an Anthill account that exists in production.
+
+For local web app work, use `http://localhost:3000` directly.
+
+## 7. Useful Commands
+
+Run these from `web/`:
 
 ```bash
-# Sign up
-curl -X POST http://localhost:3000/api/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"email":"you@example.com","password":"yourpass123"}'
-
-# Login
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"you@example.com","password":"yourpass123"}'
-
-# Get jobs (replace TOKEN)
-curl http://localhost:3000/api/jobs \
-  -H "Authorization: Bearer TOKEN"
-
-# Run matching
-curl -X POST http://localhost:3000/api/match/run \
-  -H "Authorization: Bearer TOKEN"
+npm run dev          # Start dev server
+npm run build        # Production build check
+npm run db:generate  # Regenerate Prisma client
+npm run db:push      # Push Prisma schema to database
+npm run db:studio    # Open Prisma Studio
 ```
+
+## Official References
+
+- Supabase with Prisma: https://supabase.com/docs/guides/database/prisma
+- Google OAuth web server flow: https://developers.google.com/identity/protocols/oauth2/web-server
+- Google OAuth consent/testing: https://support.google.com/cloud/answer/10311615
+- Groq quickstart/API keys: https://console.groq.com/docs/quickstart

@@ -1,4 +1,7 @@
 const DEFAULT_API_URL = 'https://anthill-ai.vercel.app'
+const APP_COOKIE_URL = `${DEFAULT_API_URL}/`
+const AUTH_COOKIE = 'anthill_token'
+const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30
 
 const $ = (id) => document.getElementById(id)
 const loginSection = $('login-section')
@@ -33,8 +36,60 @@ function setStored(values) {
 
 function clearAuthStored() {
   return new Promise((resolve) =>
-    chrome.storage.local.remove(['anthillToken', 'anthillUser'], resolve)
+    chrome.storage.local.remove(['anthillToken', 'anthillUser'], () => {
+      chrome.storage.local.set({ anthillSignedOutAt: Date.now() }, resolve)
+    })
   )
+}
+
+function clearSignedOutMarker() {
+  return new Promise((resolve) => chrome.storage.local.remove(['anthillSignedOutAt'], resolve))
+}
+
+function setAuthCookie(token) {
+  return new Promise((resolve) => {
+    if (!chrome.cookies) {
+      resolve(false)
+      return
+    }
+
+    chrome.cookies.set({
+      url: APP_COOKIE_URL,
+      name: AUTH_COOKIE,
+      value: token,
+      path: '/',
+      secure: DEFAULT_API_URL.startsWith('https:'),
+      sameSite: 'lax',
+      expirationDate: Math.floor(Date.now() / 1000) + THIRTY_DAYS_SECONDS,
+    }, () => resolve(!chrome.runtime.lastError))
+  })
+}
+
+function clearAuthCookie() {
+  return new Promise((resolve) => {
+    if (!chrome.cookies) {
+      resolve(false)
+      return
+    }
+
+    chrome.cookies.remove({ url: APP_COOKIE_URL, name: AUTH_COOKIE }, () => {
+      resolve(!chrome.runtime.lastError)
+    })
+  })
+}
+
+function syncOpenAnthillTabs(token, user) {
+  chrome.tabs.query({ url: `${DEFAULT_API_URL}/*` }, (tabs) => {
+    for (const tab of tabs) {
+      if (tab.id != null) {
+        chrome.tabs.sendMessage(tab.id, {
+          type: 'ANTHILL_EXTENSION_AUTH_SYNC',
+          token,
+          user,
+        }).catch(() => {})
+      }
+    }
+  })
 }
 
 function setSignedIn(user) {
@@ -98,6 +153,16 @@ $('open-signup').addEventListener('click', (e) => {
   chrome.tabs.create({ url: `${DEFAULT_API_URL}/signup` })
 })
 
+$('open-reset').addEventListener('click', (e) => {
+  e.preventDefault()
+  chrome.tabs.create({ url: `${DEFAULT_API_URL}/forgot-password` })
+})
+
+$('google-login-btn').addEventListener('click', (e) => {
+  e.preventDefault()
+  chrome.tabs.create({ url: `${DEFAULT_API_URL}/api/auth/google/start` })
+})
+
 $('login-btn').addEventListener('click', async () => {
   const email = $('login-email').value.trim()
   const password = $('login-password').value
@@ -121,6 +186,9 @@ $('login-btn').addEventListener('click', async () => {
       return
     }
     await setStored({ anthillToken: data.token, anthillUser: data.user })
+    await clearSignedOutMarker()
+    await setAuthCookie(data.token)
+    syncOpenAnthillTabs(data.token, data.user)
     $('login-password').value = ''
     setSignedIn(data.user)
   } catch {
@@ -133,6 +201,8 @@ $('login-btn').addEventListener('click', async () => {
 
 $('logout-btn').addEventListener('click', async () => {
   await clearAuthStored()
+  await clearAuthCookie()
+  syncOpenAnthillTabs(null, null)
   setSignedOut()
 })
 
@@ -164,6 +234,8 @@ $('capture-btn').addEventListener('click', async () => {
     })
     if (res.status === 401) {
       await clearAuthStored()
+      await clearAuthCookie()
+      syncOpenAnthillTabs(null, null)
       setSignedOut()
       showAlert($('login-status'), 'Session expired. Please sign in again.', 'error')
       return

@@ -16,6 +16,7 @@ web/node_modules/
 
 # build artifacts
 dist/
+*.tsbuildinfo
 
 # misc
 .DS_Store
@@ -25,3 +26,5 @@ dist/
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+.vercel

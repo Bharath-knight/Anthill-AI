@@ -1,12 +1,9 @@
-export function getToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('anthill_token')
-}
+import { clearSession, getToken } from './client-auth'
+
+export { getToken }
 
 export function clearAuth() {
-  if (typeof window === 'undefined') return
-  localStorage.removeItem('anthill_token')
-  localStorage.removeItem('anthill_user')
+  clearSession()
 }
 
 export async function authedFetch(
@@ -21,7 +18,7 @@ export async function authedFetch(
   }
   const res = await fetch(input, { ...init, headers })
   if (res.status === 401 && typeof window !== 'undefined') {
-    clearAuth()
+    clearSession()
     window.location.href = '/login'
   }
   return res

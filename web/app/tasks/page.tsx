@@ -1,13 +1,14 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ChevronRight, ChevronDown, Sun, CalendarDays, Calendar, Inbox, CheckCircle2, ListTodo } from 'lucide-react'
+import { Plus, ChevronRight, ChevronDown, Sun, CalendarDays, Calendar, Inbox, CheckCircle2, ListTodo, Briefcase, FileText } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { TaskRow, type Task } from '@/components/TaskRow'
 import { TaskDetailPane } from '@/components/TaskDetailPane'
 import { EmptyState } from '@/components/EmptyState'
 import { useToast } from '@/components/Toast'
 import { authedFetch, getToken } from '@/lib/api-client'
+import type { LucideIcon } from 'lucide-react'
 import {
   pendingForView, completedForView, seedDeadlineForView,
   type TaskView,
@@ -15,6 +16,7 @@ import {
 import { useTaskView, consumeFocusRequest, onNewTaskRequest } from '@/lib/task-view'
 
 type Job = { id: string; company: string; role: string }
+type TaskSourceFilter = 'all' | 'jobs' | 'research' | 'tasks'
 
 const VIEW_META: Record<TaskView, { label: string; Icon: typeof Sun; empty: string }> = {
   all:       { label: 'All',         Icon: ListTodo,    empty: 'No tasks yet. Add one above to get started.' },
@@ -25,6 +27,26 @@ const VIEW_META: Record<TaskView, { label: string; Icon: typeof Sun; empty: stri
   completed: { label: 'Completed',   Icon: CheckCircle2, empty: 'No completed tasks yet.' },
 }
 
+const SOURCE_FILTERS: { value: TaskSourceFilter; label: string; Icon: LucideIcon }[] = [
+  { value: 'all', label: 'All', Icon: ListTodo },
+  { value: 'jobs', label: 'Jobs saved', Icon: Briefcase },
+  { value: 'research', label: 'Research', Icon: FileText },
+  { value: 'tasks', label: 'Tasks', Icon: CheckCircle2 },
+]
+
+function isResearchTask(task: Task): boolean {
+  if (task.linkedJobId) return false
+  const text = `${task.title} ${task.description ?? ''}`.toLowerCase()
+  return /\b(research|article|paper|read|reading|source|notes?|company intel|learn|study)\b/.test(text)
+}
+
+function matchesSource(task: Task, source: TaskSourceFilter): boolean {
+  if (source === 'all') return true
+  if (source === 'jobs') return !!task.linkedJobId
+  if (source === 'research') return isResearchTask(task)
+  return !task.linkedJobId && !isResearchTask(task)
+}
+
 export default function TasksPage() {
   const router = useRouter()
   const toast = useToast()
@@ -32,6 +54,7 @@ export default function TasksPage() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [title, setTitle] = useState('')
   const [jobId, setJobId] = useState('')
+  const [sourceFilter, setSourceFilter] = useState<TaskSourceFilter>('all')
   const view = useTaskView()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [completedOpen, setCompletedOpen] = useState(false)
@@ -109,8 +132,14 @@ export default function TasksPage() {
   if (!authed) return null
 
   const meta = VIEW_META[view]
-  const pending = pendingForView(tasks, view)
-  const done = completedForView(tasks, view)
+  const pendingBase = pendingForView(tasks, view)
+  const doneBase = completedForView(tasks, view)
+  const sourcePool = view === 'completed' ? doneBase : [...pendingBase, ...doneBase]
+  const sourceCounts = Object.fromEntries(
+    SOURCE_FILTERS.map((f) => [f.value, sourcePool.filter((task) => matchesSource(task, f.value)).length])
+  ) as Record<TaskSourceFilter, number>
+  const pending = pendingBase.filter((task) => matchesSource(task, sourceFilter))
+  const done = doneBase.filter((task) => matchesSource(task, sourceFilter))
   const selected = tasks.find((t) => t.id === selectedId) ?? null
   const count = view === 'completed' ? done.length : pending.length
 
@@ -129,6 +158,27 @@ export default function TasksPage() {
             {count} task{count !== 1 ? 's' : ''}
           </p>
         </header>
+
+        <div className="mb-5 flex flex-wrap gap-2">
+          {SOURCE_FILTERS.map(({ value, label, Icon }) => {
+            const active = sourceFilter === value
+            return (
+              <button
+                key={value}
+                onClick={() => setSourceFilter(value)}
+                className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  active
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-border bg-surface text-text2 hover:bg-surface3 hover:text-text'
+                }`}
+              >
+                <Icon size={13} strokeWidth={2.25} />
+                {label}
+                <span className={active ? 'text-accent' : 'text-text3'}>{sourceCounts[value]}</span>
+              </button>
+            )
+          })}
+        </div>
 
         {view !== 'completed' && (
           <div className="flex items-center gap-2 px-3 py-2 mb-5 rounded-md border border-border bg-surface focus-within:border-accent transition-colors">

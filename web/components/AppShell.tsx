@@ -3,12 +3,14 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  Search, Plus, Sun, CalendarDays, Calendar, Inbox, CheckCircle2,
+  Search, Plus, Sun, CalendarDays, Calendar, Inbox, CheckCircle2, ArrowUpRight,
   Layers, Briefcase, FileText, Settings, LogOut, LogIn, PanelLeft, ListTodo,
 } from 'lucide-react'
 import { SettingsModal } from './SettingsModal'
 import type { TaskView } from '@/lib/smart-date'
 import { setTaskView, useTaskView, requestNewTask } from '@/lib/task-view'
+import { authedFetch } from '@/lib/api-client'
+import { bootstrapSession, clearSession, getStoredUser, getToken, updateStoredUser } from '@/lib/client-auth'
 
 const SMART_LISTS: { view: TaskView; label: string; Icon: typeof Sun }[] = [
   { view: 'all', label: 'All', Icon: ListTodo },
@@ -28,29 +30,87 @@ const WORKSPACE: { href: string; label: string; Icon: typeof Sun }[] = [
 
 const COLLAPSE_KEY = 'anthill_sidebar_collapsed'
 
+type SearchResults = {
+  jobs: { id: string; company: string; role: string; link: string; status: string }[]
+  tasks: {
+    id: string
+    title: string
+    completed: boolean
+    linkedJob: { id: string; company: string; role: string; link: string } | null
+  }[]
+  research: { id: string; content: string; domain: string | null; sourceUrl: string | null }[]
+}
+
+const EMPTY_RESULTS: SearchResults = { jobs: [], tasks: [], research: [] }
+
 export function AppShell({ children, fullBleed = false }: { children: React.ReactNode; fullBleed?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [user, setUser] = useState<{ email: string; name?: string } | null>(null)
+  const [user, setUser] = useState<{ email: string; name?: string | null; hasPassword?: boolean } | null>(null)
   const [signedIn, setSignedIn] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS)
   const currentView = useTaskView()
 
   useEffect(() => {
-    setSignedIn(!!localStorage.getItem('anthill_token'))
-    const stored = localStorage.getItem('anthill_user')
-    if (stored) {
-      try { setUser(JSON.parse(stored)) } catch {}
-    }
+    setSignedIn(!!getToken())
+    setUser(getStoredUser())
     setCollapsed(localStorage.getItem(COLLAPSE_KEY) === '1')
+    bootstrapSession()
+      .then((nextUser) => {
+        setSignedIn(!!nextUser)
+        if (nextUser) {
+          setUser(nextUser)
+          const shouldSetupPassword = new URLSearchParams(window.location.search).get('setupPassword') === '1'
+          if (shouldSetupPassword) {
+            setSettingsOpen(true)
+            const url = new URL(window.location.href)
+            url.searchParams.delete('setupPassword')
+            window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+          }
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // Close the mobile drawer on navigation.
   useEffect(() => {
     setMobileOpen(false)
   }, [pathname])
+
+  useEffect(() => {
+    const q = searchTerm.trim()
+    if (q.length < 2 || !signedIn) {
+      setResults(EMPTY_RESULTS)
+      setSearching(false)
+      return
+    }
+
+    let cancelled = false
+    setSearching(true)
+    const timer = window.setTimeout(() => {
+      authedFetch(`/api/search?q=${encodeURIComponent(q)}`)
+        .then((r) => (r.ok ? r.json() : EMPTY_RESULTS))
+        .then((data) => {
+          if (!cancelled) setResults(data)
+        })
+        .catch(() => {
+          if (!cancelled) setResults(EMPTY_RESULTS)
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false)
+        })
+    }, 220)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [searchTerm, signedIn])
 
   function toggleCollapse() {
     setCollapsed((c) => {
@@ -60,9 +120,9 @@ export function AppShell({ children, fullBleed = false }: { children: React.Reac
     })
   }
 
-  function logout() {
-    localStorage.removeItem('anthill_token')
-    localStorage.removeItem('anthill_user')
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
+    clearSession()
     router.replace('/login')
   }
 
@@ -88,6 +148,13 @@ export function AppShell({ children, fullBleed = false }: { children: React.Reac
         {children}
       </div>
     )
+  }
+
+  const resultCount = results.jobs.length + results.tasks.length + results.research.length
+
+  function clearSearch() {
+    setSearchTerm('')
+    setResults(EMPTY_RESULTS)
   }
 
   return (
@@ -119,15 +186,88 @@ export function AppShell({ children, fullBleed = false }: { children: React.Reac
           </button>
         </div>
 
-        {/* Search (visual placeholder) */}
+        {/* Search */}
         <div className="px-2">
-          <button
-            className={`${itemBase} w-full text-text3 hover:bg-surface3 hover:text-text`}
-            title="Search"
-          >
-            <Search size={16} strokeWidth={2} className="shrink-0" />
-            <NavLabel>Search</NavLabel>
-          </button>
+          <div className={`relative ${collapsed ? 'lg:hidden' : ''}`}>
+            <Search size={15} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text3" />
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search jobs, tasks, research"
+              className="w-full rounded border border-border bg-surface px-8 py-1.5 text-sm text-text placeholder:text-text3 outline-none transition-colors focus:border-accent"
+            />
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text3 hover:text-text"
+                aria-label="Clear search"
+              >
+                x
+              </button>
+            )}
+          </div>
+
+          {collapsed && (
+            <button
+              onClick={() => setCollapsed(false)}
+              className={`${itemBase} hidden lg:flex w-full text-text3 hover:bg-surface3 hover:text-text`}
+              title="Search"
+            >
+              <Search size={16} strokeWidth={2} className="shrink-0" />
+            </button>
+          )}
+
+          {searchTerm.trim().length >= 2 && !collapsed && (
+            <div className="mt-2 rounded-md border border-border bg-surface p-2 shadow-sm">
+              {searching && <p className="px-2 py-1.5 text-xs text-text3">Searching...</p>}
+              {!searching && resultCount === 0 && (
+                <p className="px-2 py-1.5 text-xs text-text3">No results found.</p>
+              )}
+              <SearchGroup label="Jobs" show={results.jobs.length > 0}>
+                {results.jobs.map((job) => (
+                  <SearchItem key={job.id} href="/jobs" onClick={clearSearch} icon={<Briefcase size={13} />}>
+                    <span className="truncate">{job.company} - {job.role}</span>
+                    <a
+                      href={job.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="ml-auto shrink-0 text-text3 hover:text-accent"
+                      title="Open apply link"
+                    >
+                      <ArrowUpRight size={12} />
+                    </a>
+                  </SearchItem>
+                ))}
+              </SearchGroup>
+              <SearchGroup label="Tasks" show={results.tasks.length > 0}>
+                {results.tasks.map((task) => (
+                  <SearchItem key={task.id} href="/tasks" onClick={clearSearch} icon={<ListTodo size={13} />}>
+                    <span className="truncate">{task.title}</span>
+                  </SearchItem>
+                ))}
+              </SearchGroup>
+              <SearchGroup label="Research" show={results.research.length > 0}>
+                {results.research.map((item) => (
+                  <SearchItem key={item.id} href="/research" onClick={clearSearch} icon={<FileText size={13} />}>
+                    <span className="truncate">{item.domain || item.content.slice(0, 48)}</span>
+                    {item.sourceUrl && (
+                      <a
+                        href={item.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="ml-auto shrink-0 text-text3 hover:text-accent"
+                        title="Open source"
+                      >
+                        <ArrowUpRight size={12} />
+                      </a>
+                    )}
+                  </SearchItem>
+                ))}
+              </SearchGroup>
+            </div>
+          )}
         </div>
 
         {/* Workspace — primary nav */}
@@ -236,7 +376,61 @@ export function AppShell({ children, fullBleed = false }: { children: React.Reac
         </main>
       </div>
 
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        needsPassword={user?.hasPassword === false}
+        onPasswordSaved={() => {
+          const next = updateStoredUser({ hasPassword: true })
+          if (next) setUser(next)
+          else setUser((current) => current ? { ...current, hasPassword: true } : current)
+        }}
+      />
+    </div>
+  )
+}
+
+function SearchGroup({ label, show, children }: { label: string; show: boolean; children: React.ReactNode }) {
+  if (!show) return null
+  return (
+    <div className="py-1">
+      <div className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-text3">{label}</div>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  )
+}
+
+function SearchItem({
+  href,
+  onClick,
+  icon,
+  children,
+}: {
+  href: string
+  onClick: () => void
+  icon: React.ReactNode
+  children: React.ReactNode
+}) {
+  function navigate() {
+    onClick()
+    window.location.href = href
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={navigate}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          navigate()
+        }
+      }}
+      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-xs text-text2 hover:bg-surface3 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      <span className="shrink-0 text-text3">{icon}</span>
+      {children}
     </div>
   )
 }
