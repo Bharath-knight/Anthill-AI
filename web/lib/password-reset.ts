@@ -18,21 +18,22 @@ export function buildResetUrl(origin: string, token: string): string {
 }
 
 export async function sendPasswordResetEmail(email: string, resetUrl: string): Promise<{ sent: boolean; reason?: string }> {
-  const apiKey = process.env.RESEND_API_KEY
-  const from = process.env.PASSWORD_RESET_FROM || process.env.EMAIL_FROM
+  const gmailUser = process.env.GMAIL_USER
+  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD
 
-  if (!apiKey || !from) {
+  if (!gmailUser || !gmailAppPassword) {
     return { sent: false, reason: 'email_not_configured' }
   }
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from,
+  const nodemailer = await import('nodemailer')
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: gmailUser, pass: gmailAppPassword },
+  })
+
+  try {
+    await transporter.sendMail({
+      from: `Anthill <${gmailUser}>`,
       to: email,
       subject: 'Reset your Anthill password',
       html: `
@@ -44,9 +45,9 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
         </div>
       `,
       text: `Reset your Anthill password: ${resetUrl}\n\nThis link expires in ${RESET_TTL_MINUTES} minutes.`,
-    }),
-  }).catch(() => null)
-
-  if (!res?.ok) return { sent: false, reason: 'email_send_failed' }
-  return { sent: true }
+    })
+    return { sent: true }
+  } catch {
+    return { sent: false, reason: 'email_send_failed' }
+  }
 }
