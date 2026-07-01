@@ -6,6 +6,7 @@ import { JobCard, type Job } from '@/components/JobCard'
 import { EmptyState } from '@/components/EmptyState'
 import { TextInput, Select } from '@/components/Input'
 import { STATUS_OPTIONS } from '@/components/StatusBadge'
+import { getToken } from '@/lib/api-client'
 
 export default function JobsPage() {
   const router = useRouter()
@@ -15,12 +16,8 @@ export default function JobsPage() {
   const [location, setLocation] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
-  function token() {
-    return localStorage.getItem('anthill_token')
-  }
-
   async function fetchJobs() {
-    const tk = token()
+    const tk = getToken()
     if (!tk) {
       router.replace('/login')
       return
@@ -44,7 +41,7 @@ export default function JobsPage() {
     )
     await fetch(`/api/jobs/${id}`, {
       method: 'PATCH',
-      headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
   }
@@ -52,7 +49,7 @@ export default function JobsPage() {
   async function deleteJob(id: string) {
     await fetch(`/api/jobs/${id}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token()}` },
+      headers: { Authorization: `Bearer ${getToken()}` },
     })
     setJobs((prev) => prev.filter((j) => j.id !== id))
   }

@@ -1,9 +1,16 @@
 'use client'
-import { useEffect, useRef, ChangeEvent } from 'react'
+import { useEffect, useRef, ChangeEvent, useState } from 'react'
 import { X, Upload, Trash2, RotateCcw } from 'lucide-react'
 import { useTheme, type Mood, type Accent, type Bg, type Density, type FontSize } from '@/lib/theme'
+import { TextInput } from './Input'
+import { authedFetch } from '@/lib/api-client'
 
-type Props = { open: boolean; onClose: () => void }
+type Props = {
+  open: boolean
+  onClose: () => void
+  needsPassword?: boolean
+  onPasswordSaved?: () => void
+}
 
 const MOODS: { key: Mood; label: string; swatches: [string, string, string] }[] = [
   { key: '',         label: 'Default',  swatches: ['#B8E62E', '#8B7CFF', '#0E0E11'] },
@@ -33,9 +40,15 @@ const BACKGROUNDS: { key: Bg; label: string; desc: string }[] = [
   { key: 'focus',    label: 'Focus',    desc: 'Desaturated' },
 ]
 
-export function SettingsModal({ open, onClose }: Props) {
+export function SettingsModal({ open, onClose, needsPassword = false, onPasswordSaved }: Props) {
   const { state, set, reset, wallpaper, setWallpaper } = useTheme()
   const fileRef = useRef<HTMLInputElement>(null)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordMsg, setPasswordMsg] = useState('')
+  const [passwordErr, setPasswordErr] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -63,6 +76,82 @@ export function SettingsModal({ open, onClose }: Props) {
     reader.readAsDataURL(file)
   }
 
+  async function savePassword() {
+    setPasswordMsg('')
+    setPasswordErr('')
+
+    if (newPassword.length < 8) {
+      setPasswordErr('Use at least 8 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordErr('New passwords do not match.')
+      return
+    }
+
+    setSavingPassword(true)
+    const res = await authedFetch('/api/auth/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+    const data = await res.json().catch(() => ({}))
+    setSavingPassword(false)
+
+    if (!res.ok) {
+      setPasswordErr(data.error || 'Could not update password.')
+      return
+    }
+
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    onPasswordSaved?.()
+    setPasswordMsg(needsPassword ? 'Password created.' : 'Password updated.')
+  }
+
+  const passwordSection = (
+    <Section
+      title={needsPassword ? 'Create password' : 'Password'}
+      desc={
+        needsPassword
+          ? 'Add a password so email login and the extension both work even when Google is unavailable.'
+          : 'Change the password on your Anthill account.'
+      }
+    >
+      <div className="space-y-3">
+        {!needsPassword && (
+          <TextInput
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Current password"
+          />
+        )}
+        <TextInput
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          placeholder={needsPassword ? 'Password' : 'New password'}
+        />
+        <TextInput
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="Confirm password"
+        />
+        {passwordErr && <p className="text-xs text-accent3">{passwordErr}</p>}
+        {passwordMsg && <p className="text-xs text-accent">{passwordMsg}</p>}
+        <button
+          onClick={savePassword}
+          disabled={savingPassword}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-surface2 hover:bg-surface3 text-xs disabled:opacity-50"
+        >
+          {savingPassword ? 'Saving...' : needsPassword ? 'Create password' : 'Update password'}
+        </button>
+      </div>
+    </Section>
+  )
+
   return (
     <div
       className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
@@ -70,7 +159,7 @@ export function SettingsModal({ open, onClose }: Props) {
     >
       <div className="glass-pane w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-surface border border-border rounded-lg shadow-lg">
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-border bg-surface/95 backdrop-blur">
-          <h3 className="font-semibold text-text">Appearance</h3>
+          <h3 className="font-semibold text-text">{needsPassword ? 'Finish account setup' : 'Settings'}</h3>
           <div className="flex items-center gap-2">
             <button
               onClick={reset}
@@ -86,6 +175,8 @@ export function SettingsModal({ open, onClose }: Props) {
         </div>
 
         <div className="px-6 py-5 space-y-7">
+          {needsPassword && passwordSection}
+
           {/* Light/Dark */}
           <Section title="Mode">
             <div className="grid grid-cols-2 gap-2">
@@ -230,6 +321,8 @@ export function SettingsModal({ open, onClose }: Props) {
               <Pill active={state.font === 'lg'} onClick={() => set('font', 'lg')}>Large</Pill>
             </div>
           </Section>
+
+          {!needsPassword && passwordSection}
         </div>
       </div>
     </div>

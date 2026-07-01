@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { signToken } from '@/lib/auth'
+import { authCookieOptions, AUTH_COOKIE, signToken } from '@/lib/auth'
 import { verifySignInState, getSignInRedirectUri, exchangeCode, fetchGoogleProfile, SIGNIN_STATE_COOKIE } from '@/lib/google-auth'
 
 export const dynamic = 'force-dynamic'
@@ -13,9 +13,10 @@ export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams
 
   // Every exit clears the single-use state cookie.
-  const redirect = (path: string) => {
+  const redirect = (path: string, token?: string) => {
     const res = NextResponse.redirect(new URL(path, origin))
     res.cookies.set(SIGNIN_STATE_COOKIE, '', { path: '/', maxAge: 0 })
+    if (token) res.cookies.set(AUTH_COOKIE, token, authCookieOptions())
     return res
   }
   const fail = (reason: string) => redirect(`/login?error=${reason}`)
@@ -58,9 +59,10 @@ export async function GET(request: NextRequest) {
     }
 
     const token = await signToken(user.id)
+    const setupPassword = user.password ? '' : '&setupPassword=1'
     // Hand the JWT to the client via the URL fragment (never sent to servers or
     // in Referer); /complete stores it in localStorage and strips the hash.
-    return redirect(`/complete#t=${token}`)
+    return redirect(`/complete#t=${encodeURIComponent(token)}${setupPassword}`, token)
   } catch (e) {
     console.error('Google sign-in callback failed:', e)
     return fail('google')

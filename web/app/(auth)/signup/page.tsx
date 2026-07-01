@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { TextInput, FieldLabel } from '@/components/Input'
 import { Button } from '@/components/Button'
 import { GoogleButton } from '@/components/GoogleButton'
+import { persistSession } from '@/lib/client-auth'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -29,8 +30,7 @@ export default function SignupPage() {
       setError(data.error || 'Signup failed')
       return
     }
-    localStorage.setItem('anthill_token', data.token)
-    localStorage.setItem('anthill_user', JSON.stringify(data.user))
+    persistSession(data.token, data.user)
     router.push('/jobs')
   }
 

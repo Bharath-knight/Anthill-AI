@@ -5,6 +5,7 @@ import { Search, ArrowUpRight } from 'lucide-react'
 import { Button } from '@/components/Button'
 import { Tag, TypeDot } from '@/components/Tag'
 import { EmptyState } from '@/components/EmptyState'
+import { getToken } from '@/lib/api-client'
 
 type Match = {
   id: string
@@ -30,12 +31,8 @@ export default function ResearchPage() {
   const [running, setRunning] = useState(false)
   const [matchMsg, setMatchMsg] = useState('')
 
-  function token() {
-    return localStorage.getItem('anthill_token')
-  }
-
   async function fetchResearch() {
-    const tk = token()
+    const tk = getToken()
     if (!tk) {
       router.replace('/login')
       return
@@ -58,7 +55,7 @@ export default function ResearchPage() {
     setMatchMsg('')
     const res = await fetch('/api/match/run', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token()}` },
+      headers: { Authorization: `Bearer ${getToken()}` },
     })
     const data = await res.json()
     setMatchMsg(`Found ${data.matched} match${data.matched !== 1 ? 'es' : ''}`)
@@ -69,7 +66,7 @@ export default function ResearchPage() {
   async function updateMatch(matchId: string, status: 'ACCEPTED' | 'REJECTED') {
     await fetch(`/api/match/${matchId}`, {
       method: 'PATCH',
-      headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
     setItems((prev) =>

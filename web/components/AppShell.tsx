@@ -10,6 +10,7 @@ import { SettingsModal } from './SettingsModal'
 import type { TaskView } from '@/lib/smart-date'
 import { setTaskView, useTaskView, requestNewTask } from '@/lib/task-view'
 import { authedFetch } from '@/lib/api-client'
+import { bootstrapSession, clearSession, getStoredUser, getToken, updateStoredUser } from '@/lib/client-auth'
 
 const SMART_LISTS: { view: TaskView; label: string; Icon: typeof Sun }[] = [
   { view: 'all', label: 'All', Icon: ListTodo },
@@ -45,7 +46,7 @@ const EMPTY_RESULTS: SearchResults = { jobs: [], tasks: [], research: [] }
 export function AppShell({ children, fullBleed = false }: { children: React.ReactNode; fullBleed?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [user, setUser] = useState<{ email: string; name?: string } | null>(null)
+  const [user, setUser] = useState<{ email: string; name?: string | null; hasPassword?: boolean } | null>(null)
   const [signedIn, setSignedIn] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -56,12 +57,24 @@ export function AppShell({ children, fullBleed = false }: { children: React.Reac
   const currentView = useTaskView()
 
   useEffect(() => {
-    setSignedIn(!!localStorage.getItem('anthill_token'))
-    const stored = localStorage.getItem('anthill_user')
-    if (stored) {
-      try { setUser(JSON.parse(stored)) } catch {}
-    }
+    setSignedIn(!!getToken())
+    setUser(getStoredUser())
     setCollapsed(localStorage.getItem(COLLAPSE_KEY) === '1')
+    bootstrapSession()
+      .then((nextUser) => {
+        setSignedIn(!!nextUser)
+        if (nextUser) {
+          setUser(nextUser)
+          const shouldSetupPassword = new URLSearchParams(window.location.search).get('setupPassword') === '1'
+          if (shouldSetupPassword) {
+            setSettingsOpen(true)
+            const url = new URL(window.location.href)
+            url.searchParams.delete('setupPassword')
+            window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+          }
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // Close the mobile drawer on navigation.
@@ -107,9 +120,9 @@ export function AppShell({ children, fullBleed = false }: { children: React.Reac
     })
   }
 
-  function logout() {
-    localStorage.removeItem('anthill_token')
-    localStorage.removeItem('anthill_user')
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
+    clearSession()
     router.replace('/login')
   }
 
@@ -363,7 +376,16 @@ export function AppShell({ children, fullBleed = false }: { children: React.Reac
         </main>
       </div>
 
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        needsPassword={user?.hasPassword === false}
+        onPasswordSaved={() => {
+          const next = updateStoredUser({ hasPassword: true })
+          if (next) setUser(next)
+          else setUser((current) => current ? { ...current, hasPassword: true } : current)
+        }}
+      />
     </div>
   )
 }

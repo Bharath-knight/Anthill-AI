@@ -6,6 +6,7 @@
 // stored session so the action popup falls back to its login screen.
 
 const API_URL = 'https://anthill-ai.vercel.app'
+const AUTH_COOKIE = 'anthill_token'
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Anthill installed.')
@@ -15,8 +16,37 @@ function getStored(keys) {
   return new Promise((resolve) => chrome.storage.local.get(keys, resolve))
 }
 
+function syncOpenAnthillTabs(token, user) {
+  if (!chrome.tabs) return
+  chrome.tabs.query({ url: `${API_URL}/*` }, (tabs) => {
+    for (const tab of tabs) {
+      if (tab.id != null) {
+        chrome.tabs.sendMessage(tab.id, {
+          type: 'ANTHILL_EXTENSION_AUTH_SYNC',
+          token,
+          user,
+        }).catch(() => {})
+      }
+    }
+  })
+}
+
 function clearAuth() {
-  return new Promise((resolve) => chrome.storage.local.remove(['anthillToken', 'anthillUser'], resolve))
+  return new Promise((resolve) => {
+    chrome.storage.local.remove(['anthillToken', 'anthillUser'], () => {
+      chrome.storage.local.set({ anthillSignedOutAt: Date.now() }, () => {
+        if (!chrome.cookies) {
+          syncOpenAnthillTabs(null, null)
+          resolve()
+          return
+        }
+        chrome.cookies.remove({ url: `${API_URL}/`, name: AUTH_COOKIE }, () => {
+          syncOpenAnthillTabs(null, null)
+          resolve()
+        })
+      })
+    })
+  })
 }
 
 async function apiPost(path, token, payload) {

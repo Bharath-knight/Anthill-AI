@@ -2,18 +2,22 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
+import { bootstrapSession } from '@/lib/client-auth'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [checked, setChecked] = useState(false)
 
   useEffect(() => {
-    const token = localStorage.getItem('anthill_token')
-    if (!token) {
-      router.replace('/login')
-      return
-    }
-    setChecked(true)
+    bootstrapSession()
+      .then((user) => {
+        if (!user) {
+          router.replace('/login')
+          return
+        }
+        setChecked(true)
+      })
+      .catch(() => router.replace('/login'))
   }, [router])
 
   if (!checked) return null

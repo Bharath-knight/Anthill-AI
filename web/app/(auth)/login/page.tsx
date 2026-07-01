@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { TextInput, FieldLabel } from '@/components/Input'
 import { Button } from '@/components/Button'
 import { GoogleButton } from '@/components/GoogleButton'
+import { persistSession } from '@/lib/client-auth'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -42,8 +43,7 @@ export default function LoginPage() {
       setError(data.error || 'Login failed')
       return
     }
-    localStorage.setItem('anthill_token', data.token)
-    localStorage.setItem('anthill_user', JSON.stringify(data.user))
+    persistSession(data.token, data.user)
     router.push('/jobs')
   }
 
@@ -72,7 +72,12 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <FieldLabel>Password</FieldLabel>
+            <div className="flex items-center justify-between">
+              <FieldLabel>Password</FieldLabel>
+              <Link href="/forgot-password" className="mb-1.5 text-xs text-accent hover:opacity-80">
+                Forgot?
+              </Link>
+            </div>
             <TextInput
               type="password"
               value={password}
