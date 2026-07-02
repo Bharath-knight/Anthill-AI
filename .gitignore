@@ -10,6 +10,8 @@ web/.env.local
 web/.env
 web/.env.production
 web/.env.*.local
+env.share
+*.env.share
 
 # prisma generated client
 web/node_modules/
