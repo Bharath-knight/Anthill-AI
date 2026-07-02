@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Anthill",
-  "version": "1.1.0",
-  "description": "Copy a link and Anthill offers to file it away — jobs, articles, and more — into your workspace.",
+  "version": "1.2.0",
+  "description": "Copy a link, email, or phone number and Anthill offers to file it away — jobs, articles, and contacts — into your workspace.",
   "permissions": ["activeTab", "storage", "scripting", "cookies", "contextMenus"],
   "host_permissions": [
     "https://anthill-ai.vercel.app/*",
