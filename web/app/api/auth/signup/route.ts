@@ -12,13 +12,18 @@ export async function POST(request: NextRequest) {
     if (password.length < 8) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
     }
-    const existing = await prisma.user.findUnique({ where: { email } })
+    // Store emails normalized so every lookup (login, reset, Google link) agrees;
+    // the uniqueness check is case-insensitive to also catch legacy mixed-case rows.
+    const normEmail = String(email).trim().toLowerCase()
+    const existing = await prisma.user.findFirst({
+      where: { email: { equals: normEmail, mode: 'insensitive' } },
+    })
     if (existing) {
       return NextResponse.json({ error: 'Email already in use' }, { status: 409 })
     }
     const hashed = await bcrypt.hash(password, 12)
     const user = await prisma.user.create({
-      data: { email, password: hashed, name: name || null },
+      data: { email: normEmail, password: hashed, name: name || null },
       select: { id: true, email: true, name: true, googleId: true },
     })
     const token = await signToken(user.id)

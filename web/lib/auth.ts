@@ -16,7 +16,7 @@ export function authCookieOptions() {
 }
 
 export async function signToken(userId: string): Promise<string> {
-  return new SignJWT({ userId })
+  return new SignJWT({ userId, purpose: 'auth' })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('30d')
@@ -25,7 +25,16 @@ export async function signToken(userId: string): Promise<string> {
 
 export async function verifyToken(token: string): Promise<{ userId: string }> {
   const { payload } = await jwtVerify(token, secret)
-  return { userId: payload.userId as string }
+  // Other JWTs share JWT_SECRET (Google OAuth state tokens carry their own
+  // `purpose`); only session tokens may authenticate. Tokens issued before the
+  // purpose claim existed have no `purpose`, so absence is still accepted.
+  if (payload.purpose !== undefined && payload.purpose !== 'auth') {
+    throw new Error('Wrong token type')
+  }
+  if (typeof payload.userId !== 'string' || !payload.userId) {
+    throw new Error('Token has no userId')
+  }
+  return { userId: payload.userId }
 }
 
 export async function getAuthUser(

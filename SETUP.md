@@ -10,7 +10,7 @@ start with [docs/developer-onboarding.md](docs/developer-onboarding.md).
 - A Supabase project for the database
 - Optional: Google Cloud OAuth credentials for Google Sign-In and Calendar sync
 - Optional: Groq API key for better capture classification and previews
-- Optional locally, required in production: Resend API key for password reset emails
+- Optional locally, required in production: a Gmail account with an App Password for password reset emails
 
 ## 1. Web App Setup
 
@@ -39,8 +39,8 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=
 GOOGLE_SIGNIN_REDIRECT_URI=
 GROQ_API_KEY=
-RESEND_API_KEY=
-PASSWORD_RESET_FROM=
+GMAIL_USER=
+GMAIL_APP_PASSWORD=
 ```
 
 Generate a local JWT secret with:
@@ -109,18 +109,19 @@ The redirect override variables can usually stay blank.
 
 ## 5. Password Reset Email
 
-Anthill uses Resend for classic password reset links.
+Anthill sends classic password reset links via Gmail SMTP (nodemailer).
 
 For production, set:
 
 ```env
-RESEND_API_KEY=
-PASSWORD_RESET_FROM=Anthill <noreply@your-domain.com>
+GMAIL_USER=your-gmail@gmail.com
+GMAIL_APP_PASSWORD=xxxxxxxxxxxxxxxx
 ```
 
-`PASSWORD_RESET_FROM` must be a verified sender or domain in Resend. In local
-development, if these values are blank, the forgot-password page returns a local
-reset link so the flow can still be tested without sending email.
+Create a Gmail App Password at https://myaccount.google.com/apppasswords
+(requires 2FA on the Gmail account). In local development, if these values are
+blank, the forgot-password page returns a local reset link so the flow can
+still be tested without sending email.
 
 ## 6. Chrome Extension
 

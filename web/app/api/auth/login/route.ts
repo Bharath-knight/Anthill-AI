@@ -9,7 +9,11 @@ export async function POST(request: NextRequest) {
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
-    const user = await prisma.user.findUnique({ where: { email } })
+    // Case-insensitive: legacy rows store the email as typed at signup, so a
+    // user retyping their email in different case must still match.
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: String(email).trim(), mode: 'insensitive' } },
+    })
     // user.password is null for Google-only accounts — reject password login for them.
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })

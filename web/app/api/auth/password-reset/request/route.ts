@@ -12,10 +12,15 @@ export async function POST(request: NextRequest) {
 
   const emailConfigured = Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD)
   if (!emailConfigured && process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Password reset email is not configured.' }, { status: 503 })
+    return NextResponse.json({ error: 'Email env vars missing.' }, { status: 503 })
   }
 
-  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, email: true } })
+  // Case-insensitive: existing rows store the email as typed at signup, so an
+  // exact match on the lowercased input would silently miss mixed-case accounts.
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
+    select: { id: true, email: true },
+  })
 
   if (!user) {
     return NextResponse.json({ ok: true })
@@ -34,7 +39,7 @@ export async function POST(request: NextRequest) {
 
   if (!delivery.sent && process.env.NODE_ENV === 'production') {
     console.error('Password reset email failed:', delivery.reason)
-    return NextResponse.json({ error: 'Password reset email is not configured.' }, { status: 503 })
+    return NextResponse.json({ error: `Email send failed: ${delivery.reason}` }, { status: 503 })
   }
 
   return NextResponse.json({
