@@ -1,7 +1,7 @@
 'use client'
 import { CalendarClock, Sparkles, ChevronRight } from 'lucide-react'
-import { Deadline, Suggestion } from '@/lib/calendar'
-import { relativeLabel } from '@/lib/smart-date'
+import { Deadline, Suggestion } from '@/lib/google/calendar'
+import { relativeLabel } from '@/lib/tasks/smart-date'
 import { deadlineColor } from './shared'
 import { GoogleCalendarConnect } from './GoogleCalendarConnect'
 

@@ -2,9 +2,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button } from '@/components/Button'
-import { FieldLabel, TextInput } from '@/components/Input'
-import { persistSession } from '@/lib/client-auth'
+import { Button } from '@/components/ui/Button'
+import { FieldLabel, TextInput } from '@/components/ui/Input'
+import { persistSession } from '@/lib/auth/client-auth'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -50,7 +50,7 @@ export default function ResetPasswordPage() {
     }
 
     persistSession(data.token, data.user)
-    router.replace('/jobs')
+    router.replace('/tasks')
   }
 
   return (

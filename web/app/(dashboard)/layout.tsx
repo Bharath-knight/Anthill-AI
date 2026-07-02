@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
-import { bootstrapSession } from '@/lib/client-auth'
+import { bootstrapSession } from '@/lib/auth/client-auth'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()

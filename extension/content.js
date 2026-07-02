@@ -227,6 +227,16 @@
     // that merely contains a link should not trigger the popup.
     if (trimmed.length > urlStr.length + 8) return
 
+    await offerCapture(urlStr, { respectHandled: true })
+  }
+
+  // Offer the floating capture card for a URL. Passive copy-detection respects the
+  // once-per-URL LRU (so the same copied link doesn't nag repeatedly); the keyboard
+  // shortcut passes respectHandled:false because the user explicitly asked to save
+  // *this* page, even if it was surfaced before.
+  async function offerCapture(urlStr, { respectHandled = true } = {}) {
+    if (currentHost || dismissing) return // one card at a time
+
     let u
     try {
       u = new URL(urlStr)
@@ -236,8 +246,10 @@
     if (!capturable(u)) return
 
     const key = normalize(urlStr)
-    const handled = await getHandled()
-    if (handled.includes(key)) return
+    if (respectHandled) {
+      const handled = await getHandled()
+      if (handled.includes(key)) return
+    }
 
     // NB: we mark the URL handled on close (dismiss/add/timeout), not here — so a
     // network failure leaves the card retryable rather than burning the URL.
@@ -570,4 +582,15 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && currentHost) dismiss()
   }, true)
+
+  // Explicit capture from the background worker — the keyboard shortcut (no url →
+  // current page) and the right-click menu (url = the clicked link, or the page).
+  // Registered here (not inside the TRUSTED_ORIGIN block above) so it runs on every
+  // site, not just the Anthill web app. Bypasses the once-per-URL LRU: an explicit
+  // request should always offer to save, even a page/link seen before.
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (!msg || msg.type !== 'TRIGGER_CAPTURE') return false
+    offerCapture(msg.url || window.location.href, { respectHandled: false })
+    return false
+  })
 })()

@@ -1,8 +1,8 @@
 'use client'
 import { CalendarDays } from 'lucide-react'
-import { CalEvent, Deadline, TYPE_META, formatTimeRange, ymd, sameDay } from '@/lib/calendar'
+import { CalEvent, Deadline, TYPE_META, formatTimeRange, ymd, sameDay } from '@/lib/google/calendar'
 import { deadlineColor } from './shared'
-import { EmptyState } from '@/components/EmptyState'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 type Props = {
   days: Date[]

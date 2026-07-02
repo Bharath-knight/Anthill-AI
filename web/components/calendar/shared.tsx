@@ -1,4 +1,4 @@
-import type { Deadline } from '@/lib/calendar'
+import type { Deadline } from '@/lib/google/calendar'
 
 // Muted urgency color for deadline markers (theme-aware CSS vars).
 export function deadlineColor(urgency: Deadline['urgency']): string {

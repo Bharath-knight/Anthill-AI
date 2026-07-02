@@ -1,7 +1,7 @@
 'use client'
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
-import { PasteCapture, type Captured } from './PasteCapture'
+import { PasteCapture, type Captured } from '@/components/capture/PasteCapture'
 
 type Props = {
   open: boolean

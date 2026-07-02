@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth'
+import { getAuthUser } from '@/lib/auth/auth'
 
 // Layer 4: reclassify a misrouted job as research. Creates a ResearchItem from the
 // job's stored content, then removes the job and its auto-created tasks — all in one

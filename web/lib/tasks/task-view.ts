@@ -7,7 +7,7 @@
 // which does NOT fire `hashchange`. This tiny external store lets a sidebar click
 // update the Tasks view synchronously, everywhere, with no URL/event dependency.
 import { useSyncExternalStore } from 'react'
-import type { TaskView } from './smart-date'
+import type { TaskView } from '@/lib/tasks/smart-date'
 
 let current: TaskView = 'all'
 const listeners = new Set<() => void>()

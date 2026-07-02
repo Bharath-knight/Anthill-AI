@@ -2,10 +2,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { TextInput, FieldLabel } from '@/components/Input'
-import { Button } from '@/components/Button'
-import { GoogleButton } from '@/components/GoogleButton'
-import { persistSession } from '@/lib/client-auth'
+import { TextInput, FieldLabel } from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
+import { GoogleButton } from '@/components/ui/GoogleButton'
+import { persistSession } from '@/lib/auth/client-auth'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -44,7 +44,7 @@ export default function LoginPage() {
       return
     }
     persistSession(data.token, data.user)
-    router.push('/jobs')
+    router.push('/tasks')
   }
 
   return (

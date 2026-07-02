@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth'
-import { EVENT_TYPES, type EventType } from '@/lib/calendar'
-import { pushCreate } from '@/lib/google-store'
+import { getAuthUser } from '@/lib/auth/auth'
+import { EVENT_TYPES, type EventType } from '@/lib/google/calendar'
+import { pushCreate } from '@/lib/google/google-store'
 
 export const dynamic = 'force-dynamic'
 

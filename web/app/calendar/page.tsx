@@ -8,12 +8,13 @@ import { MonthView } from '@/components/calendar/MonthView'
 import { AgendaView } from '@/components/calendar/AgendaView'
 import { ContextPanel } from '@/components/calendar/ContextPanel'
 import { EventEditor, type EventDraft } from '@/components/calendar/EventEditor'
-import { useToast } from '@/components/Toast'
-import { authedFetch, getToken } from '@/lib/api-client'
+import { useToast } from '@/components/ui/Toast'
+import { authedFetch, getToken } from '@/lib/auth/api-client'
+import { useRevalidate } from '@/lib/use-revalidate'
 import {
   fetchRange, startOfWeek, weekDays, startOfDay, addDays, addMonths, ymd,
   type CalendarData, type CalendarView, type CalEvent, type Deadline, type Suggestion, type EventType,
-} from '@/lib/calendar'
+} from '@/lib/google/calendar'
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 const timeFromISO = (iso: string) => { const d = new Date(iso); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}` }
@@ -69,6 +70,11 @@ export default function CalendarPage() {
     setLoading(true)
     reload().finally(() => setLoading(false))
   }, [authed, reload])
+
+  // Auto-sync: poll while visible + refetch on tab focus so the calendar reflects
+  // newly captured jobs/deadlines without a manual refresh. (Range changes are
+  // handled by the effect above; this keeps the current range fresh.)
+  useRevalidate(reload)
 
   // Handle the return from Google's OAuth consent (?google=connected|denied|error).
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth'
-import { googleConfigured, getRedirectUri, signState, buildAuthUrl } from '@/lib/google'
+import { getAuthUser } from '@/lib/auth/auth'
+import { googleConfigured, getRedirectUri, signState, buildAuthUrl } from '@/lib/google/google'
 
 export const dynamic = 'force-dynamic'
 

@@ -1,8 +1,8 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { Button } from '@/components/Button'
-import { FieldLabel, TextInput } from '@/components/Input'
+import { Button } from '@/components/ui/Button'
+import { FieldLabel, TextInput } from '@/components/ui/Input'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')

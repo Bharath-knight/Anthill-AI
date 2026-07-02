@@ -1,6 +1,6 @@
 'use client'
 import { Sparkles } from 'lucide-react'
-import { readingTimeMinutes, topTopics, type ResearchItem } from '@/lib/research-display'
+import { readingTimeMinutes, topTopics, type ResearchItem } from '@/lib/capture/research-display'
 
 type Props = {
   items: ResearchItem[]

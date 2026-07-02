@@ -1,5 +1,5 @@
 'use client'
-import { CalEvent, Deadline, TYPE_META, monthGridDays, sameDay, isToday, ymd } from '@/lib/calendar'
+import { CalEvent, Deadline, TYPE_META, monthGridDays, sameDay, isToday, ymd } from '@/lib/google/calendar'
 import { deadlineColor } from './shared'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']

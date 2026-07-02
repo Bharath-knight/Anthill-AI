@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth'
+import { getAuthUser } from '@/lib/auth/auth'
 import {
   htmlToText, isBlockedHost, hasJobPostingSchema, urlLooksLikeJob,
   extractTitle, extractFavicon, enrichResearch, guessContentTypeFromUrl,
-} from '@/lib/capture-utils'
+  type ResearchEnrichment,
+} from '@/lib/capture/capture-utils'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -204,10 +205,20 @@ export async function POST(request: NextRequest) {
   // as a feature). Thin/unreadable + no signal → stay research (no evidence of a job).
   const hasSchema = hasJobPostingSchema(html)
   const urlJob = urlLooksLikeJob(url)
-  const llmKind = !hasSchema && !urlJob && meaningfulChars >= 200
-    ? await classifyJobOrResearch(pageText, sourceUrl)
-    : null
-  const isJob = hasSchema || urlJob || llmKind === 'job'
+  const deterministicJob = hasSchema || urlJob
+  const needsLLM = !deterministicJob && meaningfulChars >= 200
+
+  // Run the LLM classification and the research enrichment concurrently instead of
+  // in sequence. On the ambiguous middle we bet on "research" (the common outcome)
+  // and compute the enrichment in parallel with the classification, so a research
+  // capture costs one Groq round-trip instead of two. If the page turns out to be a
+  // job we discard the enrichment (a rare wasted call) and extract fields below.
+  const emptyEnrichment: ResearchEnrichment = { summary: null, bullets: [], tags: [], contentType: null }
+  const [llmKind, enrichment] = await Promise.all([
+    needsLLM ? classifyJobOrResearch(pageText, sourceUrl) : Promise.resolve<'job' | 'research' | null>(null),
+    !deterministicJob && meaningfulChars >= 200 ? enrichResearch(pageText, sourceUrl) : Promise.resolve(emptyEnrichment),
+  ])
+  const isJob = deterministicJob || llmKind === 'job'
 
   if (!isJob) {
     // Structured knowledge for the research card. title/favicon come from the HTML;
@@ -215,9 +226,7 @@ export async function POST(request: NextRequest) {
     // pages). All are best-effort — enrichment never throws, so a page always saves.
     const title = extractTitle(html)
     const favicon = extractFavicon(html, url)
-    const enr = meaningfulChars >= 200
-      ? await enrichResearch(pageText, sourceUrl)
-      : { summary: null, bullets: [] as string[], tags: [] as string[], contentType: null }
+    const enr = enrichment // computed in parallel with classification above
     const contentType = enr.contentType ?? guessContentTypeFromUrl(url)
 
     const existingItem = await prisma.researchItem.findFirst({ where: { userId, sourceUrl } })

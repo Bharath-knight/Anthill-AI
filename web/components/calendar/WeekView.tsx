@@ -2,7 +2,7 @@
 import {
   CalEvent, Deadline, TYPE_META, HOUR_PX, GRID_HEIGHT, DAY_START_HOUR, DAY_END_HOUR,
   eventTop, eventHeight, layoutDayEvents, formatHourLabel, formatTimeRange, sameDay, isToday, ymd,
-} from '@/lib/calendar'
+} from '@/lib/google/calendar'
 import { DeadlineChip } from './shared'
 
 const HOURS = Array.from({ length: DAY_END_HOUR - DAY_START_HOUR }, (_, i) => DAY_START_HOUR + i)

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth'
+import { getAuthUser } from '@/lib/auth/auth'
 import {
   htmlToText, isBlockedHost, hasJobPostingSchema, urlLooksLikeJob,
   extractTitle, extractFavicon, metaContent,
-} from '@/lib/capture-utils'
+} from '@/lib/capture/capture-utils'
 
 // Non-persisting preview for the extension's floating card. Given a URL the user
 // just copied, return enough to render a rich preview (title, favicon, one-line

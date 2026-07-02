@@ -1,10 +1,10 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { Link2, Loader2 } from 'lucide-react'
-import { authedFetch } from '@/lib/api-client'
-import { useToast } from './Toast'
-import type { Job } from './JobCard'
-import type { ResearchItem } from './ResearchCard'
+import { authedFetch } from '@/lib/auth/api-client'
+import { useToast } from '@/components/ui/Toast'
+import type { Job } from '@/components/jobs/JobCard'
+import type { ResearchItem } from '@/components/research/ResearchCard'
 
 export type Captured =
   | { type: 'job'; job: Job }

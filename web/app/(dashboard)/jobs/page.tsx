@@ -1,12 +1,13 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Briefcase } from 'lucide-react'
-import { JobCard, type Job } from '@/components/JobCard'
-import { EmptyState } from '@/components/EmptyState'
-import { TextInput, Select } from '@/components/Input'
-import { STATUS_OPTIONS } from '@/components/StatusBadge'
-import { getToken } from '@/lib/api-client'
+import { JobCard, type Job } from '@/components/jobs/JobCard'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { TextInput, Select } from '@/components/ui/Input'
+import { STATUS_OPTIONS } from '@/components/ui/StatusBadge'
+import { getToken } from '@/lib/auth/api-client'
+import { useRevalidate } from '@/lib/use-revalidate'
 
 export default function JobsPage() {
   const router = useRouter()
@@ -16,7 +17,7 @@ export default function JobsPage() {
   const [location, setLocation] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
-  async function fetchJobs() {
+  const fetchJobs = useCallback(async () => {
     const tk = getToken()
     if (!tk) {
       router.replace('/login')
@@ -29,11 +30,10 @@ export default function JobsPage() {
     }
     setJobs(await res.json())
     setLoading(false)
-  }
+  }, [router])
 
-  useEffect(() => {
-    fetchJobs()
-  }, [])
+  // Auto-sync: refetch on mount, on interval, and when the tab regains focus.
+  useRevalidate(fetchJobs)
 
   async function updateStatus(id: string, status: string) {
     setJobs((prev) =>

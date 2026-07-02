@@ -8,8 +8,47 @@
 const API_URL = 'https://anthill-ai.vercel.app'
 const AUTH_COOKIE = 'anthill_token'
 
+const CONTEXT_MENU_ID = 'anthill-add'
+
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Anthill installed.')
+  // Right-click "Add to Anthill". On a link it saves that link (so you can bank a job
+  // posting from a feed without opening it); anywhere else it saves the current page.
+  // Recreated on install/update; menus persist across worker restarts so we don't
+  // register them on every startup (that would throw a duplicate-id error).
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_ID,
+      title: 'Add to Anthill',
+      contexts: ['page', 'link'],
+    })
+  })
+})
+
+// Ask the tab's content script to offer the capture card for `url` (or the current
+// page when url is omitted). The content script owns the card + auth handling, so
+// every capture entry point (copy, shortcut, context menu) shares one flow. Only
+// http(s) tabs have the content script; chrome://, the web store, etc. fail quietly.
+function requestCapture(tab, url) {
+  if (!tab || tab.id == null) return
+  if (!/^https?:/i.test(url || tab.url || '')) return
+  chrome.tabs.sendMessage(tab.id, { type: 'TRIGGER_CAPTURE', url }).catch(() => {})
+}
+
+// Keyboard shortcut (Alt+Shift+S on Windows/Linux, Ctrl+Shift+S on Mac): save the
+// active tab. The address bar always shows the current tab's URL, and no extension API
+// can observe an omnibox copy — so rather than watch the clipboard we grab the active
+// tab directly and route it through the same capture flow.
+chrome.commands.onCommand.addListener((command) => {
+  if (command !== 'quick-capture') return
+  chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+    requestCapture(tabs && tabs[0])
+  })
+})
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== CONTEXT_MENU_ID) return
+  // linkUrl when a link was right-clicked, else the page URL.
+  requestCapture(tab, info.linkUrl || info.pageUrl)
 })
 
 function getStored(keys) {

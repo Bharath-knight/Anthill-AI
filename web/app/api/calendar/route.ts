@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth'
-import { deriveDeadlines, deriveUpcoming, buildSuggestions, type CalEvent } from '@/lib/calendar'
-import { getValidAccessToken, pullAndReconcile } from '@/lib/google-store'
+import { getAuthUser } from '@/lib/auth/auth'
+import { deriveDeadlines, deriveUpcoming, buildSuggestions, type CalEvent } from '@/lib/google/calendar'
+import { getValidAccessToken, pullAndReconcile } from '@/lib/google/google-store'
 
 export const dynamic = 'force-dynamic'
 

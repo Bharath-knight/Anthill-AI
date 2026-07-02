@@ -3,7 +3,7 @@
   "name": "Anthill",
   "version": "1.1.0",
   "description": "Copy a link and Anthill offers to file it away — jobs, articles, and more — into your workspace.",
-  "permissions": ["activeTab", "storage", "scripting", "cookies"],
+  "permissions": ["activeTab", "storage", "scripting", "cookies", "contextMenus"],
   "host_permissions": [
     "https://anthill-ai.vercel.app/*",
     "http://*/*",
@@ -12,6 +12,17 @@
   "action": {
     "default_popup": "popup.html",
     "default_title": "Anthill — Quick Capture"
+  },
+  "commands": {
+    "quick-capture": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "windows": "Alt+Shift+S",
+        "linux": "Alt+Shift+S",
+        "mac": "MacCtrl+Shift+S"
+      },
+      "description": "Save the current page to Anthill"
+    }
   },
   "background": {
     "service_worker": "background.js"

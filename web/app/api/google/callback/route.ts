@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyState, exchangeCode, getRedirectUri } from '@/lib/google'
-import { saveGoogleAccount } from '@/lib/google-store'
+import { verifyState, exchangeCode, getRedirectUri } from '@/lib/google/google'
+import { saveGoogleAccount } from '@/lib/google/google-store'
 
 export const dynamic = 'force-dynamic'
 

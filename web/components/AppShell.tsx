@@ -6,12 +6,12 @@ import {
   Search, Plus, Sun, CalendarDays, Calendar, Inbox, CheckCircle2, ArrowUpRight,
   Layers, Briefcase, FileText, Folder, Settings, LogOut, LogIn, PanelLeft, ListTodo,
 } from 'lucide-react'
-import { SettingsModal } from './SettingsModal'
-import type { TaskView } from '@/lib/smart-date'
-import { setTaskView, useTaskView, requestNewTask } from '@/lib/task-view'
-import { authedFetch } from '@/lib/api-client'
-import { bootstrapSession, clearSession, getStoredUser, getToken, updateStoredUser } from '@/lib/client-auth'
-import { COLLECTIONS_CHANGED_EVENT, notifyCollectionsChanged, type CollectionSummary } from '@/lib/research-display'
+import { SettingsModal } from '@/components/SettingsModal'
+import type { TaskView } from '@/lib/tasks/smart-date'
+import { setTaskView, useTaskView, requestNewTask } from '@/lib/tasks/task-view'
+import { authedFetch } from '@/lib/auth/api-client'
+import { bootstrapSession, clearSession, getStoredUser, getToken, updateStoredUser } from '@/lib/auth/client-auth'
+import { COLLECTIONS_CHANGED_EVENT, notifyCollectionsChanged, type CollectionSummary } from '@/lib/capture/research-display'
 
 const SMART_LISTS: { view: TaskView; label: string; Icon: typeof Sun }[] = [
   { view: 'all', label: 'All', Icon: ListTodo },

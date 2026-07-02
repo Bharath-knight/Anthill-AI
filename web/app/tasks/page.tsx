@@ -1,19 +1,20 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, ChevronRight, ChevronDown, Sun, CalendarDays, Calendar, Inbox, CheckCircle2, ListTodo, Briefcase, FileText } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
-import { TaskRow, type Task } from '@/components/TaskRow'
-import { TaskDetailPane } from '@/components/TaskDetailPane'
-import { EmptyState } from '@/components/EmptyState'
-import { useToast } from '@/components/Toast'
-import { authedFetch, getToken } from '@/lib/api-client'
+import { TaskRow, type Task } from '@/components/tasks/TaskRow'
+import { TaskDetailPane } from '@/components/tasks/TaskDetailPane'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { useToast } from '@/components/ui/Toast'
+import { authedFetch, getToken } from '@/lib/auth/api-client'
 import type { LucideIcon } from 'lucide-react'
 import {
   pendingForView, completedForView, seedDeadlineForView,
   type TaskView,
-} from '@/lib/smart-date'
-import { useTaskView, consumeFocusRequest, onNewTaskRequest } from '@/lib/task-view'
+} from '@/lib/tasks/smart-date'
+import { useTaskView, consumeFocusRequest, onNewTaskRequest } from '@/lib/tasks/task-view'
+import { useRevalidate } from '@/lib/use-revalidate'
 
 type Job = { id: string; company: string; role: string }
 type TaskSourceFilter = 'all' | 'jobs' | 'research' | 'tasks'
@@ -62,22 +63,27 @@ export default function TasksPage() {
   const [authed, setAuthed] = useState(false)
   const addRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
+  const refresh = useCallback(async () => {
     if (!getToken()) {
       router.replace('/login')
       return
     }
     setAuthed(true)
-    Promise.all([
-      authedFetch('/api/tasks').then((r) => r.json()),
-      authedFetch('/api/items').then((r) => r.json()),
-    ])
-      .then(([tasksData, itemsData]) => {
-        setTasks(Array.isArray(tasksData) ? tasksData : [])
-        setJobs(Array.isArray(itemsData?.jobs) ? itemsData.jobs : [])
-      })
-      .finally(() => setLoading(false))
+    try {
+      const [tasksData, itemsData] = await Promise.all([
+        authedFetch('/api/tasks').then((r) => r.json()),
+        authedFetch('/api/items').then((r) => r.json()),
+      ])
+      setTasks(Array.isArray(tasksData) ? tasksData : [])
+      setJobs(Array.isArray(itemsData?.jobs) ? itemsData.jobs : [])
+    } finally {
+      setLoading(false)
+    }
   }, [router])
+
+  // Auto-sync: initial load + poll while visible + refetch on tab focus, so links
+  // saved from the extension appear without a manual refresh.
+  useRevalidate(refresh)
 
   // "+New task" (sidebar) asks this page to focus the quick-add input.
   useEffect(() => {

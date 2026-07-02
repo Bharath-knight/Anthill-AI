@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
-import { authCookieOptions, AUTH_COOKIE, signToken } from '@/lib/auth'
-import { hashResetToken } from '@/lib/password-reset'
+import { authCookieOptions, AUTH_COOKIE, signToken } from '@/lib/auth/auth'
+import { hashResetToken } from '@/lib/auth/password-reset'
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}))
