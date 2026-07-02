@@ -1,8 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { Calendar, ArrowUpRight, ChevronDown, ChevronUp, X, Pencil, ArrowLeftRight } from 'lucide-react'
-import { Tag, TypeDot } from './Tag'
-import { StatusSelect } from './StatusBadge'
+import { Tag, TypeDot } from '@/components/ui/Tag'
+import { StatusSelect } from '@/components/ui/StatusBadge'
 
 export type JobEvent = {
   id: string
@@ -22,6 +22,9 @@ export type Job = {
   notes: string | null
   status: string
   createdAt: string
+  favicon: string | null
+  coverLetter: string | null
+  experience: string | null
   events?: JobEvent[]
 }
 

@@ -4,14 +4,14 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import {
   Search, Plus, Sun, CalendarDays, Calendar, Inbox, CheckCircle2, ArrowUpRight,
-  Layers, Briefcase, FileText, Folder, Settings, LogOut, LogIn, PanelLeft, ListTodo,
+  Layers, Briefcase, FileText, Folder, Settings, LogOut, LogIn, PanelLeft, ListTodo, Users,
 } from 'lucide-react'
-import { SettingsModal } from './SettingsModal'
-import type { TaskView } from '@/lib/smart-date'
-import { setTaskView, useTaskView, requestNewTask } from '@/lib/task-view'
-import { authedFetch } from '@/lib/api-client'
-import { bootstrapSession, clearSession, getStoredUser, getToken, updateStoredUser } from '@/lib/client-auth'
-import { COLLECTIONS_CHANGED_EVENT, notifyCollectionsChanged, type CollectionSummary } from '@/lib/research-display'
+import { SettingsModal } from '@/components/SettingsModal'
+import type { TaskView } from '@/lib/tasks/smart-date'
+import { setTaskView, useTaskView, requestNewTask } from '@/lib/tasks/task-view'
+import { authedFetch } from '@/lib/auth/api-client'
+import { bootstrapSession, clearSession, getStoredUser, getToken, updateStoredUser } from '@/lib/auth/client-auth'
+import { COLLECTIONS_CHANGED_EVENT, notifyCollectionsChanged, type CollectionSummary } from '@/lib/capture/research-display'
 
 const SMART_LISTS: { view: TaskView; label: string; Icon: typeof Sun }[] = [
   { view: 'all', label: 'All', Icon: ListTodo },
@@ -26,6 +26,7 @@ const WORKSPACE: { href: string; label: string; Icon: typeof Sun }[] = [
   { href: '/items', label: 'Items', Icon: Layers },
   { href: '/jobs', label: 'Jobs', Icon: Briefcase },
   { href: '/research', label: 'Research', Icon: FileText },
+  { href: '/contacts', label: 'Contacts', Icon: Users },
   { href: '/calendar', label: 'Calendar', Icon: CalendarDays },
 ]
 

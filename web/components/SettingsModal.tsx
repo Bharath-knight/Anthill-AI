@@ -2,8 +2,8 @@
 import { useEffect, useRef, ChangeEvent, useState } from 'react'
 import { X, Upload, Trash2, RotateCcw } from 'lucide-react'
 import { useTheme, FONT_STACKS, type Mood, type Accent, type Bg, type Density, type FontSize, type FontFamily } from '@/lib/theme'
-import { TextInput } from './Input'
-import { authedFetch } from '@/lib/api-client'
+import { TextInput } from '@/components/ui/Input'
+import { authedFetch } from '@/lib/auth/api-client'
 
 type Props = {
   open: boolean

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
-import { authCookieOptions, AUTH_COOKIE, signToken } from '@/lib/auth'
+import { authCookieOptions, AUTH_COOKIE, signToken } from '@/lib/auth/auth'
 
 export async function POST(request: NextRequest) {
   try {

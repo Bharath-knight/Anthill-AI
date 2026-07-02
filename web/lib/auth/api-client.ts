@@ -1,4 +1,4 @@
-import { clearSession, getToken } from './client-auth'
+import { clearSession, getToken } from '@/lib/auth/client-auth'
 
 export { getToken }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth'
-import { disconnectGoogle } from '@/lib/google-store'
+import { getAuthUser } from '@/lib/auth/auth'
+import { disconnectGoogle } from '@/lib/google/google-store'
 
 export const dynamic = 'force-dynamic'
 

@@ -1,6 +1,6 @@
 import type { CalendarEvent } from '@prisma/client'
-import { prisma } from './db'
-import { encrypt, decrypt } from './crypto'
+import { prisma } from '@/lib/db'
+import { encrypt, decrypt } from '@/lib/auth/crypto'
 import {
   refreshAccessToken,
   fetchGoogleEmail,
@@ -11,7 +11,7 @@ import {
   parseGoogleEvent,
   type GoogleTokens,
   type GoogleEventInput,
-} from './google'
+} from '@/lib/google/google'
 
 // ── Account lifecycle ───────────────────────────────────────────────────────
 

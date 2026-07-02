@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { authCookieOptions, AUTH_COOKIE, signToken } from '@/lib/auth'
-import { verifySignInState, getSignInRedirectUri, exchangeCode, fetchGoogleProfile, SIGNIN_STATE_COOKIE } from '@/lib/google-auth'
+import { authCookieOptions, AUTH_COOKIE, signToken } from '@/lib/auth/auth'
+import { verifySignInState, getSignInRedirectUri, exchangeCode, fetchGoogleProfile, SIGNIN_STATE_COOKIE } from '@/lib/google/google-auth'
 
 export const dynamic = 'force-dynamic'
 

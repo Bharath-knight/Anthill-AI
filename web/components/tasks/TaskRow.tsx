@@ -1,6 +1,6 @@
 'use client'
 import { Check, ExternalLink, X } from 'lucide-react'
-import { urgency, relativeLabel, type Urgency } from '@/lib/smart-date'
+import { urgency, relativeLabel, type Urgency } from '@/lib/tasks/smart-date'
 
 export type Task = {
   id: string

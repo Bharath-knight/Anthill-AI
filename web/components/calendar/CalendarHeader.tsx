@@ -1,6 +1,6 @@
 'use client'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import type { CalendarView } from '@/lib/calendar'
+import type { CalendarView } from '@/lib/google/calendar'
 
 const VIEWS: { id: CalendarView; label: string }[] = [
   { id: 'week', label: 'Week' },

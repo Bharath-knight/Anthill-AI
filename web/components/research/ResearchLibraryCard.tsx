@@ -5,12 +5,12 @@ import {
   BookOpen, Code2, FileText, Globe, MessagesSquare, Newspaper, Package, PenLine, Video, BookMarked, AtSign,
   type LucideIcon,
 } from 'lucide-react'
-import { Tag } from './Tag'
+import { Tag } from '@/components/ui/Tag'
 import {
   contentTypeLabel, displayTitle, faviconUrl, readingTimeMinutes, sourceName,
   formatSavedDate, contentSnippet,
   type ResearchItem, type CollectionSummary,
-} from '@/lib/research-display'
+} from '@/lib/capture/research-display'
 
 const TYPE_ICON: Record<string, LucideIcon> = {
   article: FileText, paper: BookOpen, video: Video, repo: Code2, docs: BookMarked,

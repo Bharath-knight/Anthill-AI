@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose'
-import { exchangeCode } from './google'
+import { exchangeCode } from '@/lib/google/google'
 
 // "Sign in with Google" — identity only (openid/email/profile). These are
 // non-sensitive scopes, so this flow needs no Google app verification and works

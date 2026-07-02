@@ -2,17 +2,18 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, LayoutGrid, List, Plus, Wand2, X } from 'lucide-react'
-import { EmptyState } from '@/components/EmptyState'
-import { ResearchLibraryCard } from '@/components/ResearchLibraryCard'
-import { ResearchStats } from '@/components/ResearchStats'
-import { AddSourceModal } from '@/components/AddSourceModal'
-import { getToken, authedFetch } from '@/lib/api-client'
-import { useToast } from '@/components/Toast'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { ResearchLibraryCard } from '@/components/research/ResearchLibraryCard'
+import { ResearchStats } from '@/components/research/ResearchStats'
+import { AddSourceModal } from '@/components/capture/AddSourceModal'
+import { getToken, authedFetch } from '@/lib/auth/api-client'
+import { useRevalidate } from '@/lib/use-revalidate'
+import { useToast } from '@/components/ui/Toast'
 import {
   dateBucket, DATE_BUCKET_ORDER, displayTitle, TYPE_FILTERS,
   notifyCollectionsChanged, COLLECTIONS_CHANGED_EVENT,
   type ResearchItem, type CollectionSummary, type DateBucket,
-} from '@/lib/research-display'
+} from '@/lib/capture/research-display'
 
 type Sort = 'recent' | 'oldest' | 'az'
 
@@ -51,11 +52,15 @@ function ResearchLibrary() {
     if (res.ok) setCollections(await res.json())
   }, [])
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     if (!getToken()) { router.replace('/login'); return }
     fetchItems()
     fetchCollections()
   }, [fetchItems, fetchCollections, router])
+
+  // Auto-sync: refetch on mount, on interval, and when the tab regains focus, so
+  // links saved from the extension appear without a manual refresh.
+  useRevalidate(refresh)
 
   // Keep the collection dropdown fresh when the sidebar creates/deletes one.
   useEffect(() => {

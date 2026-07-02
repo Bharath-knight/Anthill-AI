@@ -1,16 +1,17 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Briefcase, Search, X } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
-import { JobCard, type Job } from '@/components/JobCard'
-import { ResearchCard, type ResearchItem } from '@/components/ResearchCard'
-import { EmptyState } from '@/components/EmptyState'
-import { TextInput, FieldLabel } from '@/components/Input'
-import { Button } from '@/components/Button'
-import { PasteCapture, type Captured } from '@/components/PasteCapture'
-import { useToast } from '@/components/Toast'
-import { authedFetch, getToken } from '@/lib/api-client'
+import { JobCard, type Job } from '@/components/jobs/JobCard'
+import { ResearchCard, type ResearchItem } from '@/components/research/ResearchCard'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { TextInput, FieldLabel } from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
+import { PasteCapture, type Captured } from '@/components/capture/PasteCapture'
+import { useToast } from '@/components/ui/Toast'
+import { authedFetch, getToken } from '@/lib/auth/api-client'
+import { useRevalidate } from '@/lib/use-revalidate'
 
 type EditState = { id: string; company: string; role: string; location: string; deadline: string }
 
@@ -25,38 +26,43 @@ export default function ItemsPage() {
   const [edit, setEdit] = useState<EditState | null>(null)
   const [authed, setAuthed] = useState(false)
 
-  useEffect(() => {
+  const refresh = useCallback(async () => {
     if (!getToken()) {
       router.replace('/login')
       return
     }
     setAuthed(true)
 
-    authedFetch('/api/items')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) {
-          setError(data.error)
-          return
-        }
-        setJobs(data.jobs)
-        setResearch(data.research)
-      })
-      .catch(() => setError('Failed to load items.'))
-      .finally(() => setLoading(false))
+    await Promise.all([
+      authedFetch('/api/items')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.error) {
+            setError(data.error)
+            return
+          }
+          setJobs(data.jobs)
+          setResearch(data.research)
+        })
+        .catch(() => setError('Failed to load items.'))
+        .finally(() => setLoading(false)),
 
-    authedFetch('/api/tasks')
-      .then((r) => r.json())
-      .then((data) => {
-        if (!Array.isArray(data)) return
-        const counts: Record<string, number> = {}
-        for (const t of data) {
-          if (t.linkedJobId) counts[t.linkedJobId] = (counts[t.linkedJobId] ?? 0) + 1
-        }
-        setTaskCounts(counts)
-      })
-      .catch(() => {})
+      authedFetch('/api/tasks')
+        .then((r) => r.json())
+        .then((data) => {
+          if (!Array.isArray(data)) return
+          const counts: Record<string, number> = {}
+          for (const t of data) {
+            if (t.linkedJobId) counts[t.linkedJobId] = (counts[t.linkedJobId] ?? 0) + 1
+          }
+          setTaskCounts(counts)
+        })
+        .catch(() => {}),
+    ])
   }, [router])
+
+  // Auto-sync: refetch on mount, on interval, and when the tab regains focus.
+  useRevalidate(refresh)
 
   async function saveEdit() {
     if (!edit) return

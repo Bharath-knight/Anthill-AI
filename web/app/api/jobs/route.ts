@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth'
+import { getAuthUser } from '@/lib/auth/auth'
 import { JobStatus } from '@prisma/client'
 
 export async function GET(request: NextRequest) {

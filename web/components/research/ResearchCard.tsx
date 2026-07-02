@@ -1,5 +1,5 @@
 import { ArrowUpRight, Briefcase } from 'lucide-react'
-import { Tag, TypeDot } from './Tag'
+import { Tag, TypeDot } from '@/components/ui/Tag'
 
 export type ResearchItem = {
   id: string

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { buildResetUrl, createResetToken, RESET_TTL_MINUTES, sendPasswordResetEmail } from '@/lib/password-reset'
+import { buildResetUrl, createResetToken, RESET_TTL_MINUTES, sendPasswordResetEmail } from '@/lib/auth/password-reset'
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}))

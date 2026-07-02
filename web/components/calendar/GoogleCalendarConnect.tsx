@@ -1,8 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { Calendar as CalIcon } from 'lucide-react'
-import { authedFetch } from '@/lib/api-client'
-import { useToast } from '@/components/Toast'
+import { authedFetch } from '@/lib/auth/api-client'
+import { useToast } from '@/components/ui/Toast'
 
 type Status = { connected: boolean; email: string | null; configured: boolean }
 

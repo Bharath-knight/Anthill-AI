@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { X, Trash2, Calendar, ExternalLink } from 'lucide-react'
-import { TaskCheckbox } from './TaskRow'
-import type { Task } from './TaskRow'
-import { relativeLabel, toDateInputValue } from '@/lib/smart-date'
+import { TaskCheckbox } from '@/components/tasks/TaskRow'
+import type { Task } from '@/components/tasks/TaskRow'
+import { relativeLabel, toDateInputValue } from '@/lib/tasks/smart-date'
 
 type TaskPatch = { title?: string; description?: string | null; deadline?: string | null; completed?: boolean }
 

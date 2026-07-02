@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
-import { googleConfigured } from '@/lib/google'
-import { signSignInState, buildSignInUrl, getSignInRedirectUri, SIGNIN_STATE_COOKIE } from '@/lib/google-auth'
+import { googleConfigured } from '@/lib/google/google'
+import { signSignInState, buildSignInUrl, getSignInRedirectUri, SIGNIN_STATE_COOKIE } from '@/lib/google/google-auth'
 
 export const dynamic = 'force-dynamic'
 

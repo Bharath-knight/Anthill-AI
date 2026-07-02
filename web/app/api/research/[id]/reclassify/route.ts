@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth'
+import { getAuthUser } from '@/lib/auth/auth'
 
 // Layer 4: reclassify a misrouted research item as a job. Requires a source URL (the
 // job's unique key). Mirrors capture's job creation — Unknown fields + an auto-task;

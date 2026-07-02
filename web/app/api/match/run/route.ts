@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth'
-import { computeMatch } from '@/lib/matcher'
+import { getAuthUser } from '@/lib/auth/auth'
+import { computeMatch } from '@/lib/capture/matcher'
 
 const THRESHOLD = 0.05
 

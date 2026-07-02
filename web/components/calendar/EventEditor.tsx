@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
-import { Button } from '@/components/Button'
-import { TextInput, Textarea, FieldLabel } from '@/components/Input'
-import { EVENT_TYPES, TYPE_META, type EventType } from '@/lib/calendar'
+import { Button } from '@/components/ui/Button'
+import { TextInput, Textarea, FieldLabel } from '@/components/ui/Input'
+import { EVENT_TYPES, TYPE_META, type EventType } from '@/lib/google/calendar'
 
 export type EventDraft = {
   id?: string

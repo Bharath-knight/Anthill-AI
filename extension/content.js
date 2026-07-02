@@ -15,6 +15,7 @@
 
   const API_URL = 'https://anthill-ai.vercel.app'
   const HANDLED_KEY = 'anthillHandledUrls'
+  const HANDLED_CONTACTS_KEY = 'anthillHandledContacts'
   const HANDLED_CAP = 500
   const AUTO_DISMISS_MS = 12000
   const WEB_TOKEN_KEY = 'anthill_token'
@@ -24,6 +25,9 @@
   const URL_RE = /\bhttps?:\/\/[^\s<>"'`)\[\]]+/i
   // Trailing punctuation that commonly rides along with a copied URL.
   const TRAILING = /[.,;:!?)\]}>'"]+$/
+  // The whole (cleaned) selection must be the address — copying a sentence that
+  // merely contains one should not trigger the contact card.
+  const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
 
   let currentHost = null // the live popup host element, or null when none is shown
   let autoTimer = null
@@ -146,26 +150,33 @@
     }
   }
 
-  function getHandled() {
+  // Once-per-value LRUs (one for URLs, one for contacts) so the same copy doesn't
+  // nag repeatedly. A value is marked handled only on terminal close (add-success /
+  // dismiss / auto-timeout), never on error, so failures stay retryable.
+  function getHandledList(storageKey) {
     return new Promise((resolve) => {
       try {
-        chrome.storage.local.get([HANDLED_KEY], (r) => resolve(Array.isArray(r?.[HANDLED_KEY]) ? r[HANDLED_KEY] : []))
+        chrome.storage.local.get([storageKey], (r) => resolve(Array.isArray(r?.[storageKey]) ? r[storageKey] : []))
       } catch {
         resolve([])
       }
     })
   }
 
-  function markHandled(url) {
-    getHandled().then((list) => {
-      if (list.includes(url)) return
-      const next = [...list, url].slice(-HANDLED_CAP)
+  function markHandledIn(storageKey, value) {
+    getHandledList(storageKey).then((list) => {
+      if (list.includes(value)) return
+      const next = [...list, value].slice(-HANDLED_CAP)
       try {
-        chrome.storage.local.set({ [HANDLED_KEY]: next })
+        chrome.storage.local.set({ [storageKey]: next })
       } catch {
         /* ignore */
       }
     })
+  }
+
+  function getHandled() {
+    return getHandledList(HANDLED_KEY)
   }
 
   // Strip the fragment so #section anchors don't count as distinct URLs.
@@ -212,6 +223,18 @@
 
   // --- copy detection --------------------------------------------------------
 
+  // "Essentially just a phone number": common human formatting is allowed, but
+  // date-like and IP-like strings (the frequent digit-heavy copies) are rejected.
+  // Returns the normalized +digits form, or null.
+  function looksLikePhone(raw) {
+    if (raw.length > 24) return null
+    if (/^\d{4}[-./]\d{1,2}[-./]\d{1,2}$/.test(raw)) return null // 2026-05-19
+    if (/^\d{1,2}[-./]\d{1,2}[-./]\d{2,4}$/.test(raw)) return null // 12/05/26
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(raw)) return null // IPv4
+    const stripped = raw.replace(/[\s().\-]/g, '')
+    return /^\+?\d{7,15}$/.test(stripped) ? stripped : null
+  }
+
   async function onCopy(e) {
     if (currentHost || dismissing) return // one card at a time; also dodges self-copy inside the card
 
@@ -220,12 +243,44 @@
     if (!trimmed) return
 
     const m = trimmed.match(URL_RE)
-    if (!m) return
-    const urlStr = cleanUrl(m[0])
+    if (m) {
+      const urlStr = cleanUrl(m[0])
 
-    // Require the selection to be *essentially just* the URL — copying a paragraph
-    // that merely contains a link should not trigger the popup.
-    if (trimmed.length > urlStr.length + 8) return
+      // Require the selection to be *essentially just* the URL — copying a paragraph
+      // that merely contains a link should not trigger the popup.
+      if (trimmed.length > urlStr.length + 8) return
+
+      await offerCapture(urlStr, { respectHandled: true })
+      return
+    }
+
+    // Not a URL — maybe a person. A copied email address or phone number offers
+    // to save a contact instead.
+    const candidate = trimmed.replace(TRAILING, '')
+    if (candidate.length <= 320 && EMAIL_RE.test(candidate)) {
+      await offerContact({ email: candidate.toLowerCase(), display: candidate.toLowerCase() })
+      return
+    }
+    const phone = looksLikePhone(candidate)
+    if (phone) await offerContact({ phone, display: candidate })
+  }
+
+  // Offer the "save this contact?" card for a copied email/phone. Same once-per-value
+  // etiquette as URLs: a value the user already dismissed or saved doesn't nag again.
+  async function offerContact({ email, phone, display }) {
+    if (currentHost || dismissing) return
+    const key = email ? `email:${email}` : `phone:${phone}`
+    const handled = await getHandledList(HANDLED_CONTACTS_KEY)
+    if (handled.includes(key)) return
+    showContact({ email: email || null, phone: phone || null, display, key })
+  }
+
+  // Offer the floating capture card for a URL. Passive copy-detection respects the
+  // once-per-URL LRU (so the same copied link doesn't nag repeatedly); the keyboard
+  // shortcut passes respectHandled:false because the user explicitly asked to save
+  // *this* page, even if it was surfaced before.
+  async function offerCapture(urlStr, { respectHandled = true } = {}) {
+    if (currentHost || dismissing) return // one card at a time
 
     let u
     try {
@@ -236,8 +291,10 @@
     if (!capturable(u)) return
 
     const key = normalize(urlStr)
-    const handled = await getHandled()
-    if (handled.includes(key)) return
+    if (respectHandled) {
+      const handled = await getHandled()
+      if (handled.includes(key)) return
+    }
 
     // NB: we mark the URL handled on close (dismiss/add/timeout), not here — so a
     // network failure leaves the card retryable rather than burning the URL.
@@ -339,6 +396,21 @@
     .btn.primary:hover { background: #aedb24; }
     .btn:disabled { opacity: 0.6; cursor: default; }
 
+    .cicon {
+      flex: 0 0 auto; width: 18px; height: 18px; border-radius: 4px;
+      display: grid; place-items: center; color: #6b6b76;
+    }
+    .cicon svg { width: 15px; height: 15px; }
+    .fields { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .fields input {
+      width: 100%; padding: 8px 10px; border-radius: 9px;
+      border: 1px solid rgba(0,0,0,0.1); background: #ffffff;
+      font-family: inherit; font-size: 12.5px; color: #16161b; outline: none;
+      transition: border-color 0.15s;
+    }
+    .fields input::placeholder { color: #9a9aa6; }
+    .fields input:focus { border-color: #b8e62e; }
+
     .done { display: flex; align-items: center; gap: 8px; margin-top: 13px; color: #16161b; font-weight: 600; font-size: 12.5px; }
     .done .check {
       width: 20px; height: 20px; border-radius: 50%; flex: 0 0 auto;
@@ -355,6 +427,9 @@
       .tagline { color: #9090a0; }
       .preview { background: #23232c; border-color: rgba(255,255,255,0.06); }
       .fav { background: #2e2e3a; }
+      .cicon { color: #9090a0; }
+      .fields input { background: #23232c; border-color: rgba(255,255,255,0.1); color: #ececf1; }
+      .fields input::placeholder { color: #76768a; }
       .ptitle { color: #ececf1; } .purl { color: #76768a; }
       .summary { color: #c2c2cc; } .summary.muted { color: #76768a; }
       .summary .line { background: linear-gradient(90deg, #2a2a33 25%, #34343f 37%, #2a2a33 63%); background-size: 400% 100%; }
@@ -406,9 +481,9 @@
     const host = currentHost
     currentHost = null
     if (!host) return
-    // Closing for any reason (dismiss/add-success/timeout) settles this URL: it
+    // Closing for any reason (dismiss/add-success/timeout) settles this value: it
     // won't pop again. Errors keep the card open, so they never reach here.
-    if (host.__urlKey) markHandled(host.__urlKey)
+    if (host.__markHandled) host.__markHandled()
     dismissing = true
     const card = host.__card
     if (card) {
@@ -455,7 +530,7 @@
 
     const card = root.querySelector('.card')
     host.__card = card
-    host.__urlKey = key
+    host.__markHandled = () => markHandledIn(HANDLED_KEY, key)
     document.documentElement.appendChild(host)
     currentHost = host
 
@@ -563,6 +638,132 @@
     })
   }
 
+  // --- contact card ------------------------------------------------------------
+
+  const MAIL_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>`
+  const PHONE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.9.6 2.8a2 2 0 0 1-.4 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.9.5 2.8.6a2 2 0 0 1 1.8 2.1z"/></svg>`
+
+  // The "save this contact?" card. Mirrors show()'s shell (mascot/brand/actions)
+  // but the body is the detected email/phone plus optional name + details inputs,
+  // per the capture spec: Anthill asks first and lets the user annotate the person.
+  function showContact({ email, phone, display, key }) {
+    const host = document.createElement('div')
+    host.id = 'anthill-quick-capture-host'
+    host.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;z-index:2147483647;pointer-events:none;'
+    const root = host.attachShadow({ mode: 'open' })
+
+    root.innerHTML = `
+      <style>${STYLE}</style>
+      <div class="card" role="dialog" aria-label="Add to Contacts">
+        <button class="close" aria-label="Dismiss">${CLOSE_SVG}</button>
+        <div class="head">
+          <div class="mascot">${ANT_SVG}</div>
+          <div class="brand">
+            <div class="brand-row"><span class="logo">A</span><span class="brand-name">Anthill</span></div>
+            <div class="tagline">Save this contact?</div>
+          </div>
+        </div>
+        <div class="preview">
+          <div class="cicon">${email ? MAIL_SVG : PHONE_SVG}</div>
+          <div class="pmeta">
+            <div class="ptitle"></div>
+            <div class="purl">${email ? 'Email address' : 'Phone number'}</div>
+          </div>
+        </div>
+        <div class="fields">
+          <input type="text" class="c-name" placeholder="Name (optional)" maxlength="200">
+          <input type="text" class="c-notes" placeholder="Company or notes (optional)" maxlength="2000">
+        </div>
+        <div class="actions">
+          <button class="btn ghost dismiss">Dismiss</button>
+          <button class="btn primary add">Add contact</button>
+        </div>
+        <div class="done hidden"><span class="check">${CHECK_SVG}</span><span class="done-text"></span></div>
+      </div>`
+
+    const card = root.querySelector('.card')
+    host.__card = card
+    host.__markHandled = () => markHandledIn(HANDLED_CONTACTS_KEY, key)
+    document.documentElement.appendChild(host)
+    currentHost = host
+
+    const el = (sel) => root.querySelector(sel)
+    el('.ptitle').textContent = display
+    const addBtn = el('.add')
+    const nameInput = el('.c-name')
+    const notesInput = el('.c-notes')
+    const fieldsEl = el('.fields')
+    const previewEl = root.querySelector('.preview')
+    const actionsEl = el('.actions')
+    const doneEl = el('.done')
+    const doneText = el('.done-text')
+    const tagline = el('.tagline')
+
+    requestAnimationFrame(() => card.classList.add('in'))
+    startAutoTimer()
+
+    // Keep it on screen while the user is reading, hovering, or typing.
+    card.addEventListener('mouseenter', clearAutoTimer)
+    card.addEventListener('mouseleave', startAutoTimer)
+    card.addEventListener('focusin', clearAutoTimer)
+
+    el('.close').addEventListener('click', dismiss)
+    el('.dismiss').addEventListener('click', dismiss)
+
+    send({ type: 'AUTH_STATUS' }).then((res) => {
+      if (currentHost !== host) return
+      if (res && res.authed === false) {
+        tagline.textContent = 'Sign in to Anthill to save contacts.'
+        addBtn.textContent = 'Sign in'
+      }
+    })
+
+    addBtn.addEventListener('click', async () => {
+      clearAutoTimer()
+      if (addBtn.textContent === 'Sign in') {
+        send({ type: 'OPEN_URL', url: `${API_URL}/login` })
+        dismiss()
+        return
+      }
+      addBtn.disabled = true
+      addBtn.textContent = 'Adding…'
+      const res = await send({
+        type: 'ADD_CONTACT',
+        email,
+        phone,
+        name: nameInput.value.trim() || undefined,
+        notes: notesInput.value.trim() || undefined,
+      })
+      if (currentHost !== host) return
+
+      if (!res) {
+        addBtn.disabled = false
+        addBtn.textContent = 'Retry'
+        tagline.textContent = 'Anthill was updated — reload the page and try again.'
+        return
+      }
+      if (res.authed === false) {
+        addBtn.disabled = false
+        addBtn.textContent = 'Sign in'
+        tagline.textContent = 'Your session expired — sign in to Anthill to save.'
+        return
+      }
+      if (!res.ok && res.status !== 409) {
+        addBtn.disabled = false
+        addBtn.textContent = 'Retry'
+        tagline.textContent = "Couldn't save the contact. Try again."
+        return
+      }
+
+      previewEl.classList.add('hidden')
+      fieldsEl.classList.add('hidden')
+      actionsEl.classList.add('hidden')
+      doneEl.classList.remove('hidden')
+      doneText.textContent = res.status === 409 ? 'Already in your contacts' : 'Saved to Contacts'
+      autoTimer = setTimeout(() => dismiss(), 2600)
+    })
+  }
+
   // --- wiring ----------------------------------------------------------------
 
   document.addEventListener('copy', onCopy, true)
@@ -570,4 +771,15 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && currentHost) dismiss()
   }, true)
+
+  // Explicit capture from the background worker — the keyboard shortcut (no url →
+  // current page) and the right-click menu (url = the clicked link, or the page).
+  // Registered here (not inside the TRUSTED_ORIGIN block above) so it runs on every
+  // site, not just the Anthill web app. Bypasses the once-per-URL LRU: an explicit
+  // request should always offer to save, even a page/link seen before.
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (!msg || msg.type !== 'TRIGGER_CAPTURE') return false
+    offerCapture(msg.url || window.location.href, { respectHandled: false })
+    return false
+  })
 })()
