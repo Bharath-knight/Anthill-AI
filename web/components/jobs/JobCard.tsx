@@ -22,6 +22,9 @@ export type Job = {
   notes: string | null
   status: string
   createdAt: string
+  favicon: string | null
+  coverLetter: string | null
+  experience: string | null
   events?: JobEvent[]
 }
 

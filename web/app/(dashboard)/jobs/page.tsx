@@ -43,6 +43,51 @@ function hasRealDeadline(d: string): boolean {
   return !!d && d.toLowerCase() !== 'deadline not given' && d.toLowerCase() !== 'not specified'
 }
 
+// Real site logo for a job: the favicon stored at capture, else Google's favicon
+// service for the posting's domain (covers jobs saved before favicons existed).
+// The colored letter tile remains the last resort if the image fails to load.
+function logoSrc(job: Pick<Job, 'favicon' | 'link'>): string | null {
+  if (job.favicon) return job.favicon
+  try {
+    const domain = new URL(job.link).hostname
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
+  } catch {
+    return null
+  }
+}
+
+function CompanyLogo({ job, size, rounded, className = '' }: {
+  job: Pick<Job, 'favicon' | 'link' | 'company'>; size: number; rounded: string; className?: string
+}) {
+  const [failed, setFailed] = useState(false)
+  const src = logoSrc(job)
+  if (!src || failed) {
+    return (
+      <div
+        className={`${rounded} shrink-0 grid place-items-center text-white font-bold text-center leading-tight px-1 ${className}`}
+        style={{ background: colorFor(job.company), width: size, height: size, fontSize: size > 48 ? (job.company.length > 10 ? 12 : 15) : 10 }}
+      >
+        {size > 48 && job.company.length <= 14 ? job.company : initials(job.company)}
+      </div>
+    )
+  }
+  return (
+    <div
+      className={`${rounded} shrink-0 grid place-items-center bg-white border border-border overflow-hidden ${className}`}
+      style={{ width: size, height: size }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={job.company}
+        style={{ width: Math.round(size * 0.6), height: Math.round(size * 0.6) }}
+        className="object-contain"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  )
+}
+
 export default function JobsPage() {
   const router = useRouter()
   const [jobs, setJobs] = useState<Job[]>([])
@@ -91,9 +136,13 @@ export default function JobsPage() {
   }), [jobs])
 
   const topCompanies = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const j of jobs) map.set(j.company, (map.get(j.company) ?? 0) + 1)
-    return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name]) => name)
+    const map = new Map<string, { count: number; job: Job }>()
+    for (const j of jobs) {
+      const cur = map.get(j.company)
+      map.set(j.company, { count: (cur?.count ?? 0) + 1, job: cur?.job ?? j })
+    }
+    return [...map.entries()].sort((a, b) => b[1].count - a[1].count).slice(0, 5)
+      .map(([name, v]) => ({ name, job: v.job }))
   }, [jobs])
 
   return (
@@ -151,13 +200,8 @@ export default function JobsPage() {
             <div className="text-[13px] font-semibold text-text2 mb-3">Top Companies</div>
             <div className="flex items-center">
               {topCompanies.map((c, i) => (
-                <div
-                  key={c}
-                  title={c}
-                  className="w-11 h-11 rounded-full grid place-items-center text-[10px] font-bold text-white overflow-hidden shadow-sm"
-                  style={{ background: colorFor(c), border: '2.5px solid var(--surface)', marginLeft: i === 0 ? 0 : -10 }}
-                >
-                  {initials(c)}
+                <div key={c.name} title={c.name} className="shadow-sm rounded-full" style={{ border: '2.5px solid var(--surface)', marginLeft: i === 0 ? 0 : -10 }}>
+                  <CompanyLogo job={c.job} size={44} rounded="rounded-full" />
                 </div>
               ))}
             </div>
@@ -203,12 +247,7 @@ function JobRow({ job, onStatus, onDelete }: {
     <article className="bg-surface border border-border rounded-[18px] p-6 grid gap-7 relative grid-cols-1 lg:grid-cols-[minmax(280px,1.15fr)_minmax(200px,1fr)_150px]">
       {/* col 1 — identity */}
       <div className="flex gap-4">
-        <div
-          className="w-[64px] h-[64px] rounded-[12px] shrink-0 grid place-items-center text-white font-bold text-center leading-tight px-1"
-          style={{ background: colorFor(job.company), fontSize: job.company.length > 10 ? 12 : 15 }}
-        >
-          {job.company.length > 14 ? initials(job.company) : job.company}
-        </div>
+        <CompanyLogo job={job} size={64} rounded="rounded-[12px]" />
         <div className="min-w-0">
           <h3 className="text-[18px] font-bold tracking-tight text-text mb-1.5 truncate">{job.role}</h3>
           <div className="text-[13px] text-text2 mb-3 truncate">
@@ -237,9 +276,12 @@ function JobRow({ job, onStatus, onDelete }: {
       <div className="lg:border-l lg:border-border lg:pl-7">
         <h4 className="text-[13.5px] font-semibold text-text mb-3.5">Job details</h4>
         <Detail icon={<CalendarIcon size={15} />} label="Application deadline"
-          value={hasRealDeadline(job.deadline) ? job.deadline : 'Not specified'} />
-        <Detail icon={<FileText size={15} />} label="Cover letter" value="Not specified" muted />
-        <Detail icon={<Briefcase size={15} />} label="Experience needed" value="Not specified" muted />
+          value={hasRealDeadline(job.deadline) ? job.deadline : 'Not specified'}
+          muted={!hasRealDeadline(job.deadline)} />
+        <Detail icon={<FileText size={15} />} label="Cover letter"
+          value={job.coverLetter ?? 'Not specified'} muted={!job.coverLetter} />
+        <Detail icon={<Briefcase size={15} />} label="Experience needed"
+          value={job.experience ?? 'Not specified'} muted={!job.experience} />
       </div>
 
       {/* col 3 — actions */}

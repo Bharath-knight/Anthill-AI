@@ -24,6 +24,28 @@ model User {
   googleAccount  GoogleAccount?
   passwordResets PasswordResetToken[]
   collections    Collection[]
+  contacts       Contact[]
+}
+
+// A person saved from the extension (copied email / phone number) or added
+// manually. At least one of email/phone is always present; both are stored
+// normalized (email lowercased, phone reduced to +digits) so the per-user
+// unique constraints catch re-saves of the same person.
+model Contact {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String?
+  email     String?
+  phone     String?
+  company   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, email])
+  @@unique([userId, phone])
 }
 
 model PasswordResetToken {
@@ -53,6 +75,12 @@ model Job {
   status    JobStatus @default(SAVED)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  // Populated at capture; nullable so legacy rows still render (the UI falls
+  // back to a domain favicon / "Not specified").
+  favicon     String? // site icon URL extracted from the posting's HTML
+  coverLetter String? // e.g. "Required" | "Optional" | "Not required"
+  experience  String? // e.g. "3-5 years", "Entry level"
 
   user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks  Task[]

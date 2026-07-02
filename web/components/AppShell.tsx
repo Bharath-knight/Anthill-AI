@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import {
   Search, Plus, Sun, CalendarDays, Calendar, Inbox, CheckCircle2, ArrowUpRight,
-  Layers, Briefcase, FileText, Folder, Settings, LogOut, LogIn, PanelLeft, ListTodo,
+  Layers, Briefcase, FileText, Folder, Settings, LogOut, LogIn, PanelLeft, ListTodo, Users,
 } from 'lucide-react'
 import { SettingsModal } from '@/components/SettingsModal'
 import type { TaskView } from '@/lib/tasks/smart-date'
@@ -26,6 +26,7 @@ const WORKSPACE: { href: string; label: string; Icon: typeof Sun }[] = [
   { href: '/items', label: 'Items', Icon: Layers },
   { href: '/jobs', label: 'Jobs', Icon: Briefcase },
   { href: '/research', label: 'Research', Icon: FileText },
+  { href: '/contacts', label: 'Contacts', Icon: Users },
   { href: '/calendar', label: 'Calendar', Icon: CalendarDays },
 ]
 

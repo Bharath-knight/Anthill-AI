@@ -129,6 +129,16 @@ const handlers = {
     }
   },
 
+  async ADD_CONTACT({ email, phone, name, company, notes }) {
+    const { anthillToken } = await getStored(['anthillToken'])
+    if (!anthillToken) return { authed: false }
+    try {
+      return await apiPost('/api/contacts', anthillToken, { email, phone, name, company, notes })
+    } catch {
+      return { authed: true, ok: false, error: 'network' }
+    }
+  },
+
   async OPEN_URL({ url }) {
     await chrome.tabs.create({ url })
     return { ok: true }
