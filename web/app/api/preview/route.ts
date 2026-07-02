@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
-import { htmlToText, isBlockedHost, hasJobPostingSchema, urlLooksLikeJob } from '@/lib/capture-utils'
+import {
+  htmlToText, isBlockedHost, hasJobPostingSchema, urlLooksLikeJob,
+  extractTitle, extractFavicon, metaContent,
+} from '@/lib/capture-utils'
 
 // Non-persisting preview for the extension's floating card. Given a URL the user
 // just copied, return enough to render a rich preview (title, favicon, one-line
@@ -19,90 +22,6 @@ export async function OPTIONS() {
 
 function json(body: unknown, status: number) {
   return NextResponse.json(body, { status, headers: CORS })
-}
-
-const NAMED_ENTITIES: Record<string, string> = {
-  nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'",
-  mdash: '—', ndash: '–', hellip: '…', trade: '™', reg: '®', copy: '©',
-  rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“',
-}
-
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&(#x?[0-9a-f]+|[a-z][a-z0-9]*);/gi, (_m, e: string) => {
-      const k = e.toLowerCase()
-      if (k[0] === '#') {
-        const code = k[1] === 'x' ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10)
-        if (Number.isFinite(code) && code > 0) {
-          try { return String.fromCodePoint(code) } catch { return ' ' }
-        }
-        return ' '
-      }
-      return Object.prototype.hasOwnProperty.call(NAMED_ENTITIES, k) ? NAMED_ENTITIES[k] : ' '
-    })
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-// Match a double- OR single-quoted attribute value. A single negated class
-// [^"'] would stop at the first inner quote (e.g. content="It's a job"), so the
-// two quote styles are handled separately.
-function matchAttr(tag: string, attr: string): string | null {
-  let m = tag.match(new RegExp(`${attr}\\s*=\\s*"([^"]*)"`, 'i'))
-  if (m) return m[1]
-  m = tag.match(new RegExp(`${attr}\\s*=\\s*'([^']*)'`, 'i'))
-  return m ? m[1] : null
-}
-
-// Find <meta property/name="key" content="..."> regardless of attribute order.
-function metaContent(html: string, key: string): string | null {
-  const re = /<meta\b[^>]*>/gi
-  let m: RegExpExecArray | null
-  while ((m = re.exec(html)) !== null) {
-    const tag = m[0]
-    const id = (matchAttr(tag, 'property') || matchAttr(tag, 'name') || '').toLowerCase()
-    if (id === key.toLowerCase()) {
-      const content = matchAttr(tag, 'content')
-      if (content) return decodeEntities(content)
-    }
-  }
-  return null
-}
-
-function extractTitle(html: string): string | null {
-  const og = metaContent(html, 'og:title') || metaContent(html, 'twitter:title')
-  if (og) return og
-  const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
-  return m ? decodeEntities(m[1]) : null
-}
-
-function extractFavicon(html: string, base: URL): string {
-  const re = /<link\b[^>]*>/gi
-  let m: RegExpExecArray | null
-  let href: string | null = null
-  while ((m = re.exec(html)) !== null) {
-    const tag = m[0]
-    const rel = (matchAttr(tag, 'rel') || '').toLowerCase()
-    if (/\bicon\b/.test(rel) || rel === 'shortcut icon' || rel === 'apple-touch-icon') {
-      const h = matchAttr(tag, 'href')
-      if (h) { href = h; break }
-    }
-  }
-  if (href) {
-    try {
-      // The page controls this href; the client loads it as <img src>. Only allow
-      // http(s) to a non-blocked host so a page can't point the victim's browser at
-      // a private/internal address (SSRF-via-browser) or a javascript:/data: URL.
-      const fav = new URL(href, base)
-      if ((fav.protocol === 'http:' || fav.protocol === 'https:') && !isBlockedHost(fav.hostname)) {
-        return fav.toString()
-      }
-    } catch {
-      // fall through to the favicon service
-    }
-  }
-  // Reliable fallback that works even when the page declares no icon.
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(base.hostname)}&sz=64`
 }
 
 // One concise sentence via Groq. Returns null on missing key / error / timeout so
