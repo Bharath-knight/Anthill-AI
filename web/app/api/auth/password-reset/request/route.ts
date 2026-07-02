@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
   }
 
-  const emailConfigured = Boolean(process.env.RESEND_API_KEY && (process.env.PASSWORD_RESET_FROM || process.env.EMAIL_FROM))
+  const emailConfigured = Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD)
   if (!emailConfigured && process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Password reset email is not configured.' }, { status: 503 })
   }
