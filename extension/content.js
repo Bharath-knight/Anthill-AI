@@ -31,9 +31,11 @@
 
   // Anthill's own web app can push auth changes into the extension through a
   // page -> content-script message. This keeps web login/logout in sync with the
-  // popup without exposing a public background API to arbitrary sites.
-  const TRUSTED_ORIGIN =
-    location.origin === API_URL || location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+  // popup without exposing a public background API to arbitrary sites. Trust is
+  // an exact-origin match only: a hostname check (e.g. any localhost port) would
+  // write the production JWT into unrelated local apps and let any local page
+  // overwrite or clear the extension session.
+  const TRUSTED_ORIGIN = location.origin === API_URL
 
   if (TRUSTED_ORIGIN) {
     function readCookie(name) {

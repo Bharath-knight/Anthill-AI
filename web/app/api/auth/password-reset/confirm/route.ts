@@ -27,22 +27,33 @@ export async function POST(request: NextRequest) {
   }
 
   const hashed = await bcrypt.hash(password, 12)
-  const user = await prisma.$transaction(async (tx) => {
-    const updated = await tx.user.update({
-      where: { id: reset.userId },
-      data: { password: hashed },
-      select: { id: true, email: true, name: true, googleId: true },
+  let user
+  try {
+    user = await prisma.$transaction(async (tx) => {
+      // Claim the token atomically (single conditional UPDATE) so two concurrent
+      // requests with the same token can't both pass the usedAt check above.
+      const claimed = await tx.passwordResetToken.updateMany({
+        where: { id: reset.id, usedAt: null },
+        data: { usedAt: new Date() },
+      })
+      if (claimed.count === 0) throw new Error('reset_token_used')
+      const updated = await tx.user.update({
+        where: { id: reset.userId },
+        data: { password: hashed },
+        select: { id: true, email: true, name: true, googleId: true },
+      })
+      await tx.passwordResetToken.updateMany({
+        where: { userId: reset.userId, usedAt: null, id: { not: reset.id } },
+        data: { usedAt: new Date() },
+      })
+      return updated
     })
-    await tx.passwordResetToken.update({
-      where: { id: reset.id },
-      data: { usedAt: new Date() },
-    })
-    await tx.passwordResetToken.updateMany({
-      where: { userId: reset.userId, usedAt: null, id: { not: reset.id } },
-      data: { usedAt: new Date() },
-    })
-    return updated
-  })
+  } catch (err) {
+    if (err instanceof Error && err.message === 'reset_token_used') {
+      return NextResponse.json({ error: 'This reset link is invalid or expired.' }, { status: 400 })
+    }
+    throw err
+  }
 
   const authToken = await signToken(user.id)
   const res = NextResponse.json({

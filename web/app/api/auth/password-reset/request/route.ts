@@ -15,7 +15,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Email env vars missing.' }, { status: 503 })
   }
 
-  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, email: true } })
+  // Case-insensitive: existing rows store the email as typed at signup, so an
+  // exact match on the lowercased input would silently miss mixed-case accounts.
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
+    select: { id: true, email: true },
+  })
 
   if (!user) {
     return NextResponse.json({ ok: true })

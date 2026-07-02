@@ -44,7 +44,11 @@ export async function GET(request: NextRequest) {
     // differs from this caller's.
     let user = await prisma.user.findUnique({ where: { googleId: profile.sub } })
     if (!user) {
-      const byEmail = await prisma.user.findUnique({ where: { email: profile.email } })
+      // Case-insensitive: Google reports lowercase emails, but a password account
+      // created with mixed case must link rather than fork a duplicate account.
+      const byEmail = await prisma.user.findFirst({
+        where: { email: { equals: profile.email, mode: 'insensitive' } },
+      })
       if (byEmail) {
         if (byEmail.googleId && byEmail.googleId !== profile.sub) return fail('google')
         user = await prisma.user.update({
