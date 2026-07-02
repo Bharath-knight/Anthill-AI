@@ -1,16 +1,17 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Search, Plus, Sun, CalendarDays, Calendar, Inbox, CheckCircle2, ArrowUpRight,
-  Layers, Briefcase, FileText, Settings, LogOut, LogIn, PanelLeft, ListTodo,
+  Layers, Briefcase, FileText, Folder, Settings, LogOut, LogIn, PanelLeft, ListTodo,
 } from 'lucide-react'
 import { SettingsModal } from './SettingsModal'
 import type { TaskView } from '@/lib/smart-date'
 import { setTaskView, useTaskView, requestNewTask } from '@/lib/task-view'
 import { authedFetch } from '@/lib/api-client'
 import { bootstrapSession, clearSession, getStoredUser, getToken, updateStoredUser } from '@/lib/client-auth'
+import { COLLECTIONS_CHANGED_EVENT, notifyCollectionsChanged, type CollectionSummary } from '@/lib/research-display'
 
 const SMART_LISTS: { view: TaskView; label: string; Icon: typeof Sun }[] = [
   { view: 'all', label: 'All', Icon: ListTodo },
@@ -54,6 +55,9 @@ export function AppShell({ children, fullBleed = false }: { children: React.Reac
   const [searchTerm, setSearchTerm] = useState('')
   const [searching, setSearching] = useState(false)
   const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS)
+  const [collections, setCollections] = useState<CollectionSummary[]>([])
+  const [creatingCollection, setCreatingCollection] = useState(false)
+  const [newCollectionName, setNewCollectionName] = useState('')
   const currentView = useTaskView()
 
   useEffect(() => {
@@ -111,6 +115,32 @@ export function AppShell({ children, fullBleed = false }: { children: React.Reac
       window.clearTimeout(timer)
     }
   }, [searchTerm, signedIn])
+
+  const loadCollections = useCallback(async () => {
+    const res = await authedFetch('/api/collections')
+    if (res.ok) setCollections(await res.json())
+  }, [])
+
+  // Load collections once signed in, and refetch whenever the library page mutates them.
+  useEffect(() => {
+    if (!signedIn) return
+    loadCollections()
+    const onChange = () => loadCollections()
+    window.addEventListener(COLLECTIONS_CHANGED_EVENT, onChange)
+    return () => window.removeEventListener(COLLECTIONS_CHANGED_EVENT, onChange)
+  }, [signedIn, loadCollections])
+
+  async function createCollection() {
+    const name = newCollectionName.trim()
+    if (!name) return
+    const res = await authedFetch('/api/collections', { method: 'POST', body: JSON.stringify({ name }) })
+    if (res.ok) {
+      setNewCollectionName('')
+      setCreatingCollection(false)
+      await loadCollections()
+      notifyCollectionsChanged()
+    }
+  }
 
   function toggleCollapse() {
     setCollapsed((c) => {
@@ -287,6 +317,57 @@ export function AppShell({ children, fullBleed = false }: { children: React.Reac
               </Link>
             )
           })}
+        </nav>
+
+        {/* Collections */}
+        <div className="flex items-center justify-between pr-1.5">
+          <SectionHeading>Collections</SectionHeading>
+          {!collapsed && (
+            <button
+              onClick={() => setCreatingCollection((v) => !v)}
+              className="mt-3 w-6 h-6 grid place-items-center rounded text-text3 hover:text-text hover:bg-surface3 transition-colors"
+              aria-label="New collection"
+              title="New collection"
+            >
+              <Plus size={14} strokeWidth={2.5} />
+            </button>
+          )}
+        </div>
+        <nav className={`px-2 flex flex-col gap-0.5 ${collapsed ? 'lg:hidden' : ''}`}>
+          {creatingCollection && (
+            <input
+              autoFocus
+              value={newCollectionName}
+              onChange={(e) => setNewCollectionName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') createCollection()
+                if (e.key === 'Escape') { setCreatingCollection(false); setNewCollectionName('') }
+              }}
+              onBlur={() => { if (!newCollectionName.trim()) setCreatingCollection(false) }}
+              placeholder="Collection name…"
+              className="mb-1 rounded border border-border bg-surface px-2.5 py-1.5 text-sm text-text placeholder:text-text3 outline-none focus:border-accent"
+            />
+          )}
+          {collections.length === 0 && !creatingCollection ? (
+            <p className="px-2.5 py-1 text-[11px] text-text3">No collections yet.</p>
+          ) : (
+            collections.map((c) => (
+              <Link
+                key={c.id}
+                href={`/research?collection=${c.id}`}
+                className={`${itemBase} justify-between text-text2 hover:bg-surface3 hover:text-text`}
+                title={c.name}
+              >
+                <span className="flex items-center gap-2.5 min-w-0">
+                  {c.color
+                    ? <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: c.color }} />
+                    : <Folder size={16} strokeWidth={2} className="shrink-0" />}
+                  <NavLabel>{c.name}</NavLabel>
+                </span>
+                <span className="text-[11px] text-text3">{c.count}</span>
+              </Link>
+            ))
+          )}
         </nav>
 
         <div className={`mx-3 my-2 border-t border-border ${collapsed ? 'lg:hidden' : ''}`} />

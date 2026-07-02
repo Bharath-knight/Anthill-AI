@@ -23,6 +23,7 @@ model User {
   calendarEvents CalendarEvent[]
   googleAccount  GoogleAccount?
   passwordResets PasswordResetToken[]
+  collections    Collection[]
 }
 
 model PasswordResetToken {
@@ -87,8 +88,37 @@ model ResearchItem {
   domain    String?
   createdAt DateTime @default(now())
 
+  // AI-derived structured knowledge (populated at capture; nullable so legacy rows
+  // and thin/unreadable pages still save). See lib/capture-utils.ts enrichResearch().
+  title       String?
+  summary     String?  // one-sentence description shown under the title
+  bullets     String[] // up to 3 AI key points
+  tags        String[] // topic chips
+  contentType String?  // article | paper | video | repo | docs | news | blog | forum | social | product | webpage
+  favicon     String?
+
+  collectionId String?
+  collection   Collection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   matches Match[]
+
+  @@index([userId, collectionId])
+}
+
+// User-defined folder for organizing research items. One item belongs to at most
+// one collection (many-to-one); deleting a collection nulls its items' collectionId.
+model Collection {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String? // hex chip color
+  createdAt DateTime @default(now())
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ResearchItem[]
+
+  @@unique([userId, name])
 }
 
 model Task {

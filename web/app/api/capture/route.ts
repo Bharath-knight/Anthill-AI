@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth'
-import { htmlToText, isBlockedHost, hasJobPostingSchema, urlLooksLikeJob } from '@/lib/capture-utils'
+import {
+  htmlToText, isBlockedHost, hasJobPostingSchema, urlLooksLikeJob,
+  extractTitle, extractFavicon, enrichResearch, guessContentTypeFromUrl,
+} from '@/lib/capture-utils'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -207,12 +210,50 @@ export async function POST(request: NextRequest) {
   const isJob = hasSchema || urlJob || llmKind === 'job'
 
   if (!isJob) {
+    // Structured knowledge for the research card. title/favicon come from the HTML;
+    // summary/bullets/tags/contentType come from one Groq call (skipped for thin
+    // pages). All are best-effort — enrichment never throws, so a page always saves.
+    const title = extractTitle(html)
+    const favicon = extractFavicon(html, url)
+    const enr = meaningfulChars >= 200
+      ? await enrichResearch(pageText, sourceUrl)
+      : { summary: null, bullets: [] as string[], tags: [] as string[], contentType: null }
+    const contentType = enr.contentType ?? guessContentTypeFromUrl(url)
+
     const existingItem = await prisma.researchItem.findFirst({ where: { userId, sourceUrl } })
     if (existingItem) {
+      // Backfill fields for items saved before enrichment existed, without clobbering
+      // anything already populated.
+      if (!existingItem.summary && enr.summary) {
+        const updated = await prisma.researchItem.update({
+          where: { id: existingItem.id },
+          data: {
+            title: existingItem.title ?? title,
+            favicon: existingItem.favicon ?? favicon,
+            summary: enr.summary,
+            bullets: enr.bullets,
+            tags: enr.tags,
+            contentType: existingItem.contentType ?? contentType,
+          },
+        })
+        return NextResponse.json({ type: 'research', ...updated }, { status: 200, headers: CORS })
+      }
       return NextResponse.json({ type: 'research', ...existingItem }, { status: 200, headers: CORS })
     }
+
     const item = await prisma.researchItem.create({
-      data: { userId, content: pageText || sourceUrl, sourceUrl, domain: url.hostname },
+      data: {
+        userId,
+        content: pageText || sourceUrl,
+        sourceUrl,
+        domain: url.hostname,
+        title,
+        favicon,
+        summary: enr.summary,
+        bullets: enr.bullets,
+        tags: enr.tags,
+        contentType,
+      },
     })
     return NextResponse.json({ type: 'research', ...item }, { status: 201, headers: CORS })
   }

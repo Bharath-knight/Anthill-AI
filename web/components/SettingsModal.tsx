@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, ChangeEvent, useState } from 'react'
 import { X, Upload, Trash2, RotateCcw } from 'lucide-react'
-import { useTheme, type Mood, type Accent, type Bg, type Density, type FontSize } from '@/lib/theme'
+import { useTheme, FONT_STACKS, type Mood, type Accent, type Bg, type Density, type FontSize, type FontFamily } from '@/lib/theme'
 import { TextInput } from './Input'
 import { authedFetch } from '@/lib/api-client'
 
@@ -29,6 +29,14 @@ const ACCENTS: { key: Accent; label: string; color: string }[] = [
   { key: 'violet', label: 'Violet',  color: '#A78BFA' },
   { key: 'amber',  label: 'Amber',   color: '#F0A030' },
   { key: 'mono',   label: 'Mono',    color: '#E5E5EA' },
+]
+
+const FONTS: { key: FontFamily; label: string }[] = [
+  { key: 'inter',   label: 'Inter' },
+  { key: 'jakarta', label: 'Jakarta' },
+  { key: 'serif',   label: 'Serif' },
+  { key: 'mono',    label: 'Mono' },
+  { key: 'system',  label: 'System' },
 ]
 
 const BACKGROUNDS: { key: Bg; label: string; desc: string }[] = [
@@ -210,20 +218,40 @@ export function SettingsModal({ open, onClose, needsPassword = false, onPassword
           </Section>
 
           {/* Accent override */}
-          <Section title="Accent">
-            <div className="flex flex-wrap gap-2">
+          <Section title="Accent" desc="Pick a preset or any custom color.">
+            <div className="flex flex-wrap items-center gap-2">
               {ACCENTS.map((a) => (
                 <button
                   key={a.key || 'default'}
-                  onClick={() => set('accent', a.key)}
+                  onClick={() => { set('accent', a.key); set('customAccent', '') }}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs transition-all ${
-                    state.accent === a.key ? 'border-accent bg-surface3' : 'border-border hover:border-border2 bg-surface2'
+                    state.accent === a.key && !state.customAccent ? 'border-accent bg-surface3' : 'border-border hover:border-border2 bg-surface2'
                   }`}
                 >
                   <span className="w-3 h-3 rounded-full" style={{ background: a.color }} />
                   {a.label}
                 </button>
               ))}
+              {/* Custom color — the hidden native picker fills the pill so a click anywhere opens it. */}
+              <label
+                className={`relative flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs cursor-pointer transition-all ${
+                  state.customAccent ? 'border-accent bg-surface3' : 'border-border hover:border-border2 bg-surface2'
+                }`}
+                title="Custom accent color"
+              >
+                <input
+                  type="color"
+                  value={state.customAccent || '#4772FA'}
+                  onChange={(e) => set('customAccent', e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  aria-label="Custom accent color"
+                />
+                <span
+                  className="w-3 h-3 rounded-full border border-black/20"
+                  style={{ background: state.customAccent || 'linear-gradient(135deg,#4772FA,#A78BFA)' }}
+                />
+                {state.customAccent ? state.customAccent.toUpperCase() : 'Custom'}
+              </label>
             </div>
           </Section>
 
@@ -319,6 +347,26 @@ export function SettingsModal({ open, onClose, needsPassword = false, onPassword
               <Pill active={state.font === 'sm'} onClick={() => set('font', 'sm')}>Small</Pill>
               <Pill active={state.font === 'md'} onClick={() => set('font', 'md')}>Medium</Pill>
               <Pill active={state.font === 'lg'} onClick={() => set('font', 'lg')}>Large</Pill>
+            </div>
+          </Section>
+
+          {/* Font family */}
+          <Section title="Font" desc="Interface typeface.">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              {FONTS.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => set('fontFamily', f.key)}
+                  style={{ fontFamily: FONT_STACKS[f.key] }}
+                  className={`px-3 py-2 rounded text-sm border transition-all ${
+                    state.fontFamily === f.key
+                      ? 'border-accent bg-surface3 text-text'
+                      : 'border-border bg-surface2 text-text2 hover:text-text hover:border-border2'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
             </div>
           </Section>
 

@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
   const items = await prisma.researchItem.findMany({
     where: { userId: auth.userId },
     include: {
+      collection: { select: { id: true, name: true, color: true } },
       matches: {
         include: { task: { select: { id: true, title: true } } },
         orderBy: { matchScore: 'desc' },

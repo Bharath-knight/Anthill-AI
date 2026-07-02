@@ -7,32 +7,58 @@ export type Accent = '' | 'ticktick' | 'blue' | 'violet' | 'amber' | 'mono'
 export type Bg = '' | 'gradient' | 'glow' | 'texture' | 'glass' | 'black' | 'focus' | 'image'
 export type Density = 'cozy' | 'compact'
 export type FontSize = 'sm' | 'md' | 'lg'
+export type FontFamily = 'inter' | 'jakarta' | 'serif' | 'mono' | 'system'
 export type BgLuma = '' | 'bright' | 'dark'
 
 export type ThemeState = {
   mode: Mode
   mood: Mood
   accent: Accent
+  customAccent: string  // '' = use the preset accent; otherwise a #hex override
   bg: Bg
   glass: boolean
   density: Density
   font: FontSize
+  fontFamily: FontFamily
   cardOpacity: number   // 0.4 - 1.0
   blur: number          // 0 - 30 (px)
   bgLuma: BgLuma
+}
+
+// UI font choices. The webfonts themselves are loaded via @import in globals.css.
+export const FONT_STACKS: Record<FontFamily, string> = {
+  inter:   "'Inter', -apple-system, system-ui, sans-serif",
+  jakarta: "'Plus Jakarta Sans', 'Inter', system-ui, sans-serif",
+  serif:   "'Source Serif 4', Georgia, 'Times New Roman', serif",
+  mono:    "'JetBrains Mono', ui-monospace, monospace",
+  system:  "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
 }
 
 const DEFAULT_STATE: ThemeState = {
   mode: 'light',
   mood: '',
   accent: 'ticktick',
+  customAccent: '',
   bg: '',
   glass: false,
   density: 'cozy',
   font: 'md',
+  fontFamily: 'inter',
   cardOpacity: 1,
   blur: 0,
   bgLuma: '',
+}
+
+// Convert #RGB / #RRGGBB to an rgba() string. Returns null for anything invalid.
+function hexToRgba(hex: string, alpha: number): string | null {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return null
+  let h = m[1]
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 const STORAGE_KEY = 'anthill_theme'
@@ -100,6 +126,19 @@ function applyToDom(state: ThemeState, wallpaper: string | null) {
   html.style.setProperty('--card-opacity', String(state.cardOpacity))
   html.style.setProperty('--blur', `${state.blur}px`)
   html.style.setProperty('--bg-image', wallpaper ? `url("${wallpaper}")` : 'none')
+
+  // Custom accent overrides the preset — an inline style beats the [data-accent]
+  // stylesheet rules. Clearing it lets the preset/mode cascade take over again.
+  const soft = state.customAccent ? hexToRgba(state.customAccent, 0.12) : null
+  if (state.customAccent && soft) {
+    html.style.setProperty('--accent', state.customAccent)
+    html.style.setProperty('--accent-soft', soft)
+  } else {
+    html.style.removeProperty('--accent')
+    html.style.removeProperty('--accent-soft')
+  }
+
+  html.style.setProperty('--font-sans', FONT_STACKS[state.fontFamily] || FONT_STACKS.inter)
 }
 
 // Calculate luminance of an image data URL — used to decide bright/dark for text contrast.
