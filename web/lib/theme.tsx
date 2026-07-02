@@ -37,7 +37,7 @@ export const FONT_STACKS: Record<FontFamily, string> = {
 const DEFAULT_STATE: ThemeState = {
   mode: 'light',
   mood: '',
-  accent: 'ticktick',
+  accent: '',
   customAccent: '',
   bg: '',
   glass: false,
